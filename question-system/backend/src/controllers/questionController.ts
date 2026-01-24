@@ -5,12 +5,17 @@ import { AuthRequest } from '../middleware/auth';
 export async function getQuestions(req: AuthRequest, res: Response): Promise<void> {
   const prisma: PrismaClient = req.app.get('prisma');
   const userRole = req.user?.role;
+  const lectureId = req.query.lectureId ? parseInt(req.query.lectureId as string) : undefined;
 
   try {
     const questions = await prisma.question.findMany({
+      where: lectureId ? { lectureId } : undefined,
       include: {
         author: {
           select: { id: true, name: true, role: true },
+        },
+        lecture: {
+          select: { id: true, name: true },
         },
         answers: {
           include: {
@@ -57,6 +62,9 @@ export async function getQuestion(req: AuthRequest, res: Response): Promise<void
         author: {
           select: { id: true, name: true, role: true },
         },
+        lecture: {
+          select: { id: true, name: true },
+        },
         answers: {
           include: {
             author: {
@@ -96,7 +104,7 @@ export async function getQuestion(req: AuthRequest, res: Response): Promise<void
 
 export async function createQuestion(req: AuthRequest, res: Response): Promise<void> {
   const prisma: PrismaClient = req.app.get('prisma');
-  const { title, content } = req.body;
+  const { title, content, lectureId } = req.body;
   const userId = req.user?.id;
 
   if (!userId) {
@@ -109,16 +117,34 @@ export async function createQuestion(req: AuthRequest, res: Response): Promise<v
     return;
   }
 
+  if (!lectureId) {
+    res.status(400).json({ error: '講義の選択は必須です' });
+    return;
+  }
+
   try {
+    const lecture = await prisma.lecture.findUnique({
+      where: { id: lectureId },
+    });
+
+    if (!lecture) {
+      res.status(404).json({ error: '講義が見つかりません' });
+      return;
+    }
+
     const question = await prisma.question.create({
       data: {
         title,
         content,
         authorId: userId,
+        lectureId,
       },
       include: {
         author: {
           select: { id: true, name: true, role: true },
+        },
+        lecture: {
+          select: { id: true, name: true },
         },
       },
     });
