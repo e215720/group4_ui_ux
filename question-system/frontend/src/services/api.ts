@@ -21,11 +21,26 @@ interface Answer {
   createdAt: string;
 }
 
+interface Lecture {
+  id: number;
+  name: string;
+  description: string | null;
+  teacher: Author;
+  _count: {
+    questions: number;
+  };
+  createdAt: string;
+}
+
 interface Question {
   id: number;
   title: string;
   content: string;
   author: Author;
+  lecture: {
+    id: number;
+    name: string;
+  };
   answers: Answer[];
   resolved: boolean;
   createdAt: string;
@@ -83,9 +98,47 @@ export async function getMe(): Promise<{ user: User }> {
   return handleResponse<{ user: User }>(response);
 }
 
+// Lectures API
+export async function getLectures(): Promise<{ lectures: Lecture[] }> {
+  const response = await fetch(`${API_BASE}/lectures`, {
+    headers: getAuthHeaders(),
+  });
+  return handleResponse<{ lectures: Lecture[] }>(response);
+}
+
+export async function getLecture(id: number): Promise<{ lecture: Lecture }> {
+  const response = await fetch(`${API_BASE}/lectures/${id}`, {
+    headers: getAuthHeaders(),
+  });
+  return handleResponse<{ lecture: Lecture }>(response);
+}
+
+export async function createLecture(
+  name: string,
+  description?: string
+): Promise<{ lecture: Lecture }> {
+  const response = await fetch(`${API_BASE}/lectures`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ name, description }),
+  });
+  return handleResponse<{ lecture: Lecture }>(response);
+}
+
+export async function deleteLecture(id: number): Promise<{ message: string }> {
+  const response = await fetch(`${API_BASE}/lectures/${id}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+  return handleResponse<{ message: string }>(response);
+}
+
 // Questions API
-export async function getQuestions(): Promise<{ questions: Question[] }> {
-  const response = await fetch(`${API_BASE}/questions`, {
+export async function getQuestions(lectureId?: number): Promise<{ questions: Question[] }> {
+  const url = lectureId
+    ? `${API_BASE}/questions?lectureId=${lectureId}`
+    : `${API_BASE}/questions`;
+  const response = await fetch(url, {
     headers: getAuthHeaders(),
   });
   return handleResponse<{ questions: Question[] }>(response);
@@ -100,12 +153,13 @@ export async function getQuestion(id: number): Promise<{ question: Question }> {
 
 export async function createQuestion(
   title: string,
-  content: string
+  content: string,
+  lectureId: number
 ): Promise<{ question: Question }> {
   const response = await fetch(`${API_BASE}/questions`, {
     method: 'POST',
     headers: getAuthHeaders(),
-    body: JSON.stringify({ title, content }),
+    body: JSON.stringify({ title, content, lectureId }),
   });
   return handleResponse<{ question: Question }>(response);
 }
@@ -130,4 +184,4 @@ export async function addAnswer(
   return handleResponse<{ answer: Answer }>(response);
 }
 
-export type { User, Question, Answer, Author };
+export type { User, Question, Answer, Author, Lecture };

@@ -1,14 +1,13 @@
 import { useState, FormEvent } from 'react';
-import { createQuestion } from '../../services/api';
+import { createLecture } from '../../services/api';
 
-interface QuestionFormProps {
-  lectureId: number;
-  onQuestionCreated: () => void;
+interface LectureFormProps {
+  onLectureCreated: () => void;
 }
 
-export function QuestionForm({ lectureId, onQuestionCreated }: QuestionFormProps) {
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
+export function LectureForm({ onLectureCreated }: LectureFormProps) {
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -18,12 +17,12 @@ export function QuestionForm({ lectureId, onQuestionCreated }: QuestionFormProps
     setLoading(true);
 
     try {
-      await createQuestion(title, content, lectureId);
-      setTitle('');
-      setContent('');
-      onQuestionCreated();
+      await createLecture(name, description || undefined);
+      setName('');
+      setDescription('');
+      onLectureCreated();
     } catch (err) {
-      setError(err instanceof Error ? err.message : '質問の投稿に失敗しました');
+      setError(err instanceof Error ? err.message : '講義の作成に失敗しました');
     } finally {
       setLoading(false);
     }
@@ -31,33 +30,32 @@ export function QuestionForm({ lectureId, onQuestionCreated }: QuestionFormProps
 
   return (
     <div style={styles.container}>
-      <h3 style={styles.title}>新しい質問を投稿</h3>
+      <h3 style={styles.title}>新しい講義を作成</h3>
       <form onSubmit={handleSubmit} style={styles.form}>
         {error && <div style={styles.error}>{error}</div>}
         <div style={styles.field}>
-          <label style={styles.label}>タイトル</label>
+          <label style={styles.label}>講義名 *</label>
           <input
             type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
             required
-            placeholder="質問のタイトルを入力"
+            placeholder="例: プログラミング基礎"
             style={styles.input}
           />
         </div>
         <div style={styles.field}>
-          <label style={styles.label}>内容</label>
+          <label style={styles.label}>説明（任意）</label>
           <textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            required
-            placeholder="質問の詳細を入力"
-            rows={4}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="講義の説明を入力"
+            rows={2}
             style={styles.textarea}
           />
         </div>
         <button type="submit" disabled={loading} style={styles.button}>
-          {loading ? '投稿中...' : '質問を投稿'}
+          {loading ? '作成中...' : '講義を作成'}
         </button>
       </form>
     </div>
@@ -66,14 +64,16 @@ export function QuestionForm({ lectureId, onQuestionCreated }: QuestionFormProps
 
 const styles: { [key: string]: React.CSSProperties } = {
   container: {
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#e8f4f8',
     padding: '20px',
     borderRadius: '8px',
     marginBottom: '20px',
+    border: '1px solid #b8daff',
   },
   title: {
     marginTop: 0,
     marginBottom: '15px',
+    color: '#004085',
   },
   form: {
     display: 'flex',
@@ -87,6 +87,7 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   label: {
     fontWeight: 'bold',
+    fontSize: '14px',
   },
   input: {
     padding: '10px',
@@ -103,7 +104,7 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   button: {
     padding: '12px',
-    backgroundColor: '#007bff',
+    backgroundColor: '#28a745',
     color: 'white',
     border: 'none',
     borderRadius: '4px',

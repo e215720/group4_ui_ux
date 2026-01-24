@@ -1,16 +1,21 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Question, getQuestions } from '../../services/api';
+import { Question, Lecture, getQuestions } from '../../services/api';
 import { QuestionItem } from './QuestionItem';
 import { QuestionForm } from './QuestionForm';
 
-export function QuestionList() {
+interface QuestionListProps {
+  lecture: Lecture;
+  onBack: () => void;
+}
+
+export function QuestionList({ lecture, onBack }: QuestionListProps) {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   const fetchQuestions = useCallback(async () => {
     try {
-      const { questions } = await getQuestions();
+      const { questions } = await getQuestions(lecture.id);
       setQuestions(questions);
       setError('');
     } catch (err) {
@@ -18,7 +23,7 @@ export function QuestionList() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [lecture.id]);
 
   useEffect(() => {
     fetchQuestions();
@@ -30,14 +35,25 @@ export function QuestionList() {
 
   return (
     <div style={styles.container}>
-      <QuestionForm onQuestionCreated={fetchQuestions} />
+      <button onClick={onBack} style={styles.backButton}>
+        ← 講義一覧に戻る
+      </button>
+
+      <div style={styles.lectureHeader}>
+        <h2 style={styles.lectureName}>{lecture.name}</h2>
+        {lecture.description && (
+          <p style={styles.lectureDescription}>{lecture.description}</p>
+        )}
+      </div>
+
+      <QuestionForm lectureId={lecture.id} onQuestionCreated={fetchQuestions} />
 
       {error && <div style={styles.error}>{error}</div>}
 
-      <h2 style={styles.title}>質問一覧</h2>
+      <h3 style={styles.title}>質問一覧</h3>
 
       {questions.length === 0 ? (
-        <p style={styles.noQuestions}>まだ質問がありません</p>
+        <p style={styles.noQuestions}>この講義にはまだ質問がありません</p>
       ) : (
         questions.map((question) => (
           <QuestionItem
@@ -56,6 +72,32 @@ const styles: { [key: string]: React.CSSProperties } = {
     maxWidth: '800px',
     margin: '0 auto',
     padding: '20px',
+  },
+  backButton: {
+    padding: '8px 16px',
+    backgroundColor: 'transparent',
+    color: '#007bff',
+    border: '1px solid #007bff',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    fontSize: '14px',
+    marginBottom: '20px',
+  },
+  lectureHeader: {
+    backgroundColor: '#e8f4f8',
+    padding: '15px 20px',
+    borderRadius: '8px',
+    marginBottom: '20px',
+    borderLeft: '4px solid #007bff',
+  },
+  lectureName: {
+    margin: 0,
+    color: '#004085',
+  },
+  lectureDescription: {
+    margin: '10px 0 0 0',
+    color: '#666',
+    fontSize: '14px',
   },
   title: {
     marginBottom: '20px',
