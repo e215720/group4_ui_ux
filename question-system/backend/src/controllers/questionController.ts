@@ -6,16 +6,38 @@ export async function getQuestions(req: AuthRequest, res: Response): Promise<voi
   const prisma: PrismaClient = req.app.get('prisma');
   const userRole = req.user?.role;
   const lectureId = req.query.lectureId ? parseInt(req.query.lectureId as string) : undefined;
+  const tagIds = req.query.tags
+    ? (req.query.tags as string).split(',').map((id) => parseInt(id))
+    : undefined;
 
   try {
+    const whereClause: {
+      lectureId?: number;
+      tags?: { some: { id: { in: number[] } } };
+    } = {};
+
+    if (lectureId) {
+      whereClause.lectureId = lectureId;
+    }
+
+    if (tagIds && tagIds.length > 0) {
+      whereClause.tags = { some: { id: { in: tagIds } } };
+    }
+
     const questions = await prisma.question.findMany({
-      where: lectureId ? { lectureId } : undefined,
+      where: Object.keys(whereClause).length > 0 ? whereClause : undefined,
       include: {
         author: {
           select: { id: true, name: true, role: true },
         },
         lecture: {
           select: { id: true, name: true },
+        },
+        tags: {
+          select: { id: true, name: true, lectureId: true },
+        },
+        images: {
+          select: { id: true, filename: true, path: true },
         },
         answers: {
           include: {
@@ -65,6 +87,12 @@ export async function getQuestion(req: AuthRequest, res: Response): Promise<void
         lecture: {
           select: { id: true, name: true },
         },
+        tags: {
+          select: { id: true, name: true, lectureId: true },
+        },
+        images: {
+          select: { id: true, filename: true, path: true },
+        },
         answers: {
           include: {
             author: {
@@ -104,7 +132,7 @@ export async function getQuestion(req: AuthRequest, res: Response): Promise<void
 
 export async function createQuestion(req: AuthRequest, res: Response): Promise<void> {
   const prisma: PrismaClient = req.app.get('prisma');
-  const { title, content, lectureId } = req.body;
+  const { title, content, lectureId, tagIds, images } = req.body;
   const userId = req.user?.id;
 
   if (!userId) {
@@ -138,6 +166,19 @@ export async function createQuestion(req: AuthRequest, res: Response): Promise<v
         content,
         authorId: userId,
         lectureId,
+        ...(tagIds && tagIds.length > 0
+          ? { tags: { connect: tagIds.map((id: number) => ({ id })) } }
+          : {}),
+        ...(images && images.length > 0
+          ? {
+              images: {
+                create: images.map((img: { filename: string; path: string }) => ({
+                  filename: img.filename,
+                  path: img.path,
+                })),
+              },
+            }
+          : {}),
       },
       include: {
         author: {
@@ -145,6 +186,12 @@ export async function createQuestion(req: AuthRequest, res: Response): Promise<v
         },
         lecture: {
           select: { id: true, name: true },
+        },
+        tags: {
+          select: { id: true, name: true, lectureId: true },
+        },
+        images: {
+          select: { id: true, filename: true, path: true },
         },
       },
     });
@@ -216,5 +263,69 @@ export async function addAnswer(req: AuthRequest, res: Response): Promise<void> 
   } catch (error) {
     console.error('Add answer error:', error);
     res.status(500).json({ error: '回答の追加に失敗しました' });
+  }
+}
+
+export async function updateQuestionTags(req: AuthRequest, res: Response): Promise<void> {
+  const prisma: PrismaClient = req.app.get('prisma');
+  const { id } = req.params;
+  const { tagIds } = req.body;
+  const userId = req.user?.id;
+
+  if (!userId) {
+    res.status(401).json({ error: '認証が必要です' });
+    return;
+  }
+
+  try {
+    const question = await prisma.question.findUnique({
+      where: { id: parseInt(id) },
+    });
+
+    if (!question) {
+      res.status(404).json({ error: '質問が見つかりません' });
+      return;
+    }
+
+    if (question.authorId !== userId) {
+      res.status(403).json({ error: 'タグの編集権限がありません' });
+      return;
+    }
+
+    const updatedQuestion = await prisma.question.update({
+      where: { id: parseInt(id) },
+      data: {
+        tags: {
+          set: tagIds ? tagIds.map((tagId: number) => ({ id: tagId })) : [],
+        },
+      },
+      include: {
+        author: {
+          select: { id: true, name: true, role: true },
+        },
+        lecture: {
+          select: { id: true, name: true },
+        },
+        tags: {
+          select: { id: true, name: true, lectureId: true },
+        },
+        images: {
+          select: { id: true, filename: true, path: true },
+        },
+        answers: {
+          include: {
+            author: {
+              select: { id: true, name: true, role: true },
+            },
+          },
+          orderBy: { createdAt: 'asc' },
+        },
+      },
+    });
+
+    res.json({ question: updatedQuestion });
+  } catch (error) {
+    console.error('Update question tags error:', error);
+    res.status(500).json({ error: 'タグの更新に失敗しました' });
   }
 }

@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Question, resolveQuestion } from '../../services/api';
+import { Question, Tag, resolveQuestion, updateQuestionTags } from '../../services/api';
 import { useAuth } from '../../hooks/useAuth';
 import { AnswerForm } from './AnswerForm';
+import { TagBadge, TagInput } from '../Tags';
 
 interface QuestionItemProps {
   question: Question;
@@ -10,7 +11,35 @@ interface QuestionItemProps {
 
 export function QuestionItem({ question, onUpdate }: QuestionItemProps) {
   const [expanded, setExpanded] = useState(false);
+  const [isEditingTags, setIsEditingTags] = useState(false);
+  const [editingTags, setEditingTags] = useState<Tag[]>([]);
+  const [savingTags, setSavingTags] = useState(false);
   const { user } = useAuth();
+
+  const isAuthor = user?.id === question.author.id;
+
+  const handleStartEditTags = () => {
+    setEditingTags(question.tags || []);
+    setIsEditingTags(true);
+  };
+
+  const handleCancelEditTags = () => {
+    setIsEditingTags(false);
+    setEditingTags([]);
+  };
+
+  const handleSaveTags = async () => {
+    setSavingTags(true);
+    try {
+      await updateQuestionTags(question.id, editingTags.map((t) => t.id));
+      setIsEditingTags(false);
+      onUpdate();
+    } catch (error) {
+      console.error('Failed to update tags:', error);
+    } finally {
+      setSavingTags(false);
+    }
+  };
 
   const handleResolve = async () => {
     try {
@@ -40,6 +69,75 @@ export function QuestionItem({ question, onUpdate }: QuestionItemProps) {
       </div>
 
       <p style={styles.content}>{question.content}</p>
+
+      {question.images && question.images.length > 0 && (
+        <div style={styles.imagesSection}>
+          {question.images.map((image) => (
+            <a
+              key={image.id}
+              href={`http://localhost:4000${image.path}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={styles.imageLink}
+            >
+              <img
+                src={`http://localhost:4000${image.path}`}
+                alt=""
+                style={styles.questionImage}
+              />
+            </a>
+          ))}
+        </div>
+      )}
+
+      {question.tags && question.tags.length > 0 && !isEditingTags && (
+        <div style={styles.tagsSection}>
+          <div style={styles.tagsList}>
+            {question.tags.map((tag) => (
+              <TagBadge key={tag.id} tag={tag} />
+            ))}
+          </div>
+          {isAuthor && (
+            <button onClick={handleStartEditTags} style={styles.editTagsButton}>
+              タグを編集
+            </button>
+          )}
+        </div>
+      )}
+
+      {question.tags && question.tags.length === 0 && isAuthor && !isEditingTags && (
+        <div style={styles.tagsSection}>
+          <button onClick={handleStartEditTags} style={styles.editTagsButton}>
+            タグを追加
+          </button>
+        </div>
+      )}
+
+      {isEditingTags && (
+        <div style={styles.editTagsSection}>
+          <TagInput
+            lectureId={question.lecture.id}
+            selectedTags={editingTags}
+            onChange={setEditingTags}
+          />
+          <div style={styles.editTagsActions}>
+            <button
+              onClick={handleSaveTags}
+              disabled={savingTags}
+              style={styles.saveTagsButton}
+            >
+              {savingTags ? '保存中...' : '保存'}
+            </button>
+            <button
+              onClick={handleCancelEditTags}
+              disabled={savingTags}
+              style={styles.cancelButton}
+            >
+              キャンセル
+            </button>
+          </div>
+        </div>
+      )}
 
       <div style={styles.actions}>
         <button onClick={() => setExpanded(!expanded)} style={styles.toggleButton}>
@@ -113,6 +211,55 @@ const styles: { [key: string]: React.CSSProperties } = {
   content: {
     marginBottom: '15px',
     lineHeight: 1.6,
+  },
+  tagsSection: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    marginBottom: '15px',
+    flexWrap: 'wrap',
+  },
+  tagsList: {
+    display: 'flex',
+    gap: '6px',
+    flexWrap: 'wrap',
+  },
+  editTagsButton: {
+    background: 'none',
+    border: 'none',
+    color: '#007bff',
+    cursor: 'pointer',
+    fontSize: '13px',
+    padding: 0,
+  },
+  editTagsSection: {
+    marginBottom: '15px',
+    padding: '15px',
+    backgroundColor: '#f8f9fa',
+    borderRadius: '8px',
+  },
+  editTagsActions: {
+    display: 'flex',
+    gap: '10px',
+    marginTop: '10px',
+  },
+  saveTagsButton: {
+    padding: '6px 12px',
+    backgroundColor: '#007bff',
+    color: 'white',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    fontSize: '14px',
+  },
+  cancelButton: {
+    padding: '6px 12px',
+    backgroundColor: 'transparent',
+    color: '#6c757d',
+    border: '1px solid #6c757d',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    fontSize: '14px',
   },
   actions: {
     display: 'flex',

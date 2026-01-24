@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Question, Lecture, getQuestions } from '../../services/api';
 import { QuestionItem } from './QuestionItem';
 import { QuestionForm } from './QuestionForm';
+import { TagFilter } from '../Tags';
 
 interface QuestionListProps {
   lecture: Lecture;
@@ -12,10 +13,15 @@ export function QuestionList({ lecture, onBack }: QuestionListProps) {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
 
   const fetchQuestions = useCallback(async () => {
+    setLoading(true);
     try {
-      const { questions } = await getQuestions(lecture.id);
+      const { questions } = await getQuestions(
+        lecture.id,
+        selectedTagIds.length > 0 ? selectedTagIds : undefined
+      );
       setQuestions(questions);
       setError('');
     } catch (err) {
@@ -23,11 +29,15 @@ export function QuestionList({ lecture, onBack }: QuestionListProps) {
     } finally {
       setLoading(false);
     }
-  }, [lecture.id]);
+  }, [lecture.id, selectedTagIds]);
 
   useEffect(() => {
     fetchQuestions();
   }, [fetchQuestions]);
+
+  const handleTagFilterChange = (tagIds: number[]) => {
+    setSelectedTagIds(tagIds);
+  };
 
   if (loading) {
     return <div style={styles.loading}>読み込み中...</div>;
@@ -50,10 +60,20 @@ export function QuestionList({ lecture, onBack }: QuestionListProps) {
 
       {error && <div style={styles.error}>{error}</div>}
 
+      <TagFilter
+        lectureId={lecture.id}
+        selectedTagIds={selectedTagIds}
+        onChange={handleTagFilterChange}
+      />
+
       <h3 style={styles.title}>質問一覧</h3>
 
       {questions.length === 0 ? (
-        <p style={styles.noQuestions}>この講義にはまだ質問がありません</p>
+        <p style={styles.noQuestions}>
+          {selectedTagIds.length > 0
+            ? '選択したタグに一致する質問がありません'
+            : 'この講義にはまだ質問がありません'}
+        </p>
       ) : (
         questions.map((question) => (
           <QuestionItem
