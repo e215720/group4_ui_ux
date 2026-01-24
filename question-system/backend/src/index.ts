@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import { PrismaClient } from '@prisma/client';
 import authRoutes from './routes/auth';
+import lectureRoutes from './routes/lectures';
 import questionRoutes from './routes/questions';
 
 const app = express();
@@ -16,6 +17,7 @@ app.set('prisma', prisma);
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/lectures', lectureRoutes);
 app.use('/api/questions', questionRoutes);
 
 // Health check
