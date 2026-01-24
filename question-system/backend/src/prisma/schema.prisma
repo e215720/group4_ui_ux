@@ -13,17 +13,30 @@ model User {
   password  String
   name      String
   role      Role       @default(STUDENT)
-  questions Question[]
+  questions Question[] @relation("QuestionAuthor")
   answers   Answer[]
+  lectures  Lecture[]
   createdAt DateTime   @default(now())
+}
+
+model Lecture {
+  id          Int        @id @default(autoincrement())
+  name        String
+  description String?
+  teacher     User       @relation(fields: [teacherId], references: [id])
+  teacherId   Int
+  questions   Question[]
+  createdAt   DateTime   @default(now())
 }
 
 model Question {
   id        Int      @id @default(autoincrement())
   title     String
   content   String
-  author    User     @relation(fields: [authorId], references: [id])
+  author    User     @relation("QuestionAuthor", fields: [authorId], references: [id])
   authorId  Int
+  lecture   Lecture  @relation(fields: [lectureId], references: [id])
+  lectureId Int
   answers   Answer[]
   resolved  Boolean  @default(false)
   createdAt DateTime @default(now())

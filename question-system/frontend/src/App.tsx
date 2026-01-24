@@ -3,10 +3,13 @@ import { useAuth } from './hooks/useAuth';
 import { LoginForm } from './components/Auth/LoginForm';
 import { RegisterForm } from './components/Auth/RegisterForm';
 import { QuestionList } from './components/Questions/QuestionList';
+import { LectureList } from './components/Lectures/LectureList';
+import { Lecture } from './services/api';
 
 function App() {
   const { user, logout, loading } = useAuth();
   const [showLogin, setShowLogin] = useState(true);
+  const [selectedLecture, setSelectedLecture] = useState<Lecture | null>(null);
 
   if (loading) {
     return <div style={styles.loading}>読み込み中...</div>;
@@ -39,7 +42,14 @@ function App() {
         </div>
       </header>
       <main>
-        <QuestionList />
+        {selectedLecture ? (
+          <QuestionList
+            lecture={selectedLecture}
+            onBack={() => setSelectedLecture(null)}
+          />
+        ) : (
+          <LectureList onSelectLecture={setSelectedLecture} />
+        )}
       </main>
     </div>
   );
