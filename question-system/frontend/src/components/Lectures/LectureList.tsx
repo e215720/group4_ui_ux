@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Lecture, getLectures, deleteLecture } from '../../services/api';
-import { LectureForm } from './LectureForm';
 import { useAuth } from '../../hooks/useAuth';
+import { useTheme, Theme } from '../../contexts/ThemeContext';
+import { useMediaQuery } from '../../hooks/useMediaQuery';
 
 interface LectureListProps {
   onSelectLecture: (lecture: Lecture) => void;
@@ -9,21 +10,34 @@ interface LectureListProps {
 
 export function LectureList({ onSelectLecture }: LectureListProps) {
   const { user } = useAuth();
+  const { themeObject } = useTheme();
+  const isMobile = useMediaQuery('(max-width: 768px)');
   const [lectures, setLectures] = useState<Lecture[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  const styles = useMemo(() => getStyles(themeObject, isMobile), [themeObject, isMobile]);
+
   const fetchLectures = useCallback(async () => {
+    if (!user) return;
     try {
-      const { lectures } = await getLectures();
-      setLectures(lectures);
+      setLoading(true);
+      const { lectures: allLectures } = await getLectures();
+      if (user.role === 'TEACHER') {
+        const filteredLectures = allLectures.filter(
+          (lecture) => lecture.teacher.id === user.id
+        );
+        setLectures(filteredLectures);
+      } else {
+        setLectures(allLectures);
+      }
       setError('');
     } catch (err) {
       setError(err instanceof Error ? err.message : '講義の取得に失敗しました');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     fetchLectures();
@@ -47,20 +61,18 @@ export function LectureList({ onSelectLecture }: LectureListProps) {
 
   return (
     <div style={styles.container}>
-      {user?.role === 'TEACHER' && (
-        <LectureForm onLectureCreated={fetchLectures} />
-      )}
-
       {error && <div style={styles.error}>{error}</div>}
 
-      <h2 style={styles.title}>講義一覧</h2>
+      <h2 style={styles.title}>
+        {user?.role === 'TEACHER' ? '担当講義一覧' : '講義一覧'}
+      </h2>
       <p style={styles.subtitle}>質問を見たい講義を選択してください</p>
 
       {lectures.length === 0 ? (
         <p style={styles.noLectures}>
           {user?.role === 'TEACHER'
-            ? 'まだ講義がありません。上のフォームから講義を作成してください。'
-            : 'まだ講義がありません。教師が講義を作成するまでお待ちください。'}
+            ? 'あなたが担当する講義はありません。'
+            : '現在受講可能な講義はありません。'}
         </p>
       ) : (
         <div style={styles.lectureGrid}>
@@ -102,94 +114,111 @@ export function LectureList({ onSelectLecture }: LectureListProps) {
   );
 }
 
-const styles: { [key: string]: React.CSSProperties } = {
+const getStyles = (theme: Theme, isMobile: boolean): { [key: string]: React.CSSProperties } => ({
   container: {
-    maxWidth: '900px',
-    margin: '0 auto',
-    padding: '20px',
+    padding: isMobile ? '15px' : '20px',
+    overflowY: 'auto',
+    height: '100%',
   },
   title: {
     marginBottom: '5px',
+    fontSize: isMobile ? '18px' : '20px',
+    color: theme.text,
   },
   subtitle: {
-    color: '#6c757d',
+    color: theme.subtleText,
     marginBottom: '20px',
+    fontSize: '14px',
   },
   loading: {
     textAlign: 'center',
     padding: '40px',
-    color: '#6c757d',
+    color: theme.subtleText,
   },
   error: {
-    color: '#dc3545',
-    backgroundColor: '#f8d7da',
+    color: theme.dangerText,
+    backgroundColor: theme.danger,
     padding: '15px',
     borderRadius: '4px',
     marginBottom: '20px',
   },
   noLectures: {
     textAlign: 'center',
-    color: '#6c757d',
+    color: theme.subtleText,
     padding: '40px',
-    backgroundColor: '#f8f9fa',
+    backgroundColor: theme.formBg,
     borderRadius: '8px',
   },
   lectureGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-    gap: '20px',
+    gridTemplateColumns: '1fr',
+    gap: '15px',
   },
   lectureCard: {
-    backgroundColor: 'white',
+    backgroundColor: theme.columnBg,
     borderRadius: '8px',
-    padding: '20px',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+    padding: '15px',
+    border: `1px solid ${theme.border}`,
     display: 'flex',
     flexDirection: 'column',
     justifyContent: 'space-between',
+    transition: 'border-color 0.2s, box-shadow 0.2s',
   },
   lectureContent: {
     marginBottom: '15px',
   },
   lectureName: {
     margin: '0 0 10px 0',
-    fontSize: '18px',
-    color: '#333',
+    fontSize: '16px',
+    color: theme.text,
+    fontWeight: 600,
   },
   lectureDescription: {
     margin: '0 0 10px 0',
-    color: '#666',
-    fontSize: '14px',
+    color: theme.subtleText,
+    fontSize: '13px',
   },
   lectureInfo: {
     display: 'flex',
     justifyContent: 'space-between',
-    fontSize: '12px',
-    color: '#888',
+    alignItems: 'center',
+    marginTop: '15px',
   },
-  teacherName: {},
-  questionCount: {},
+  teacherName: {
+    backgroundColor: theme.primary,
+    color: theme.primaryText,
+    fontWeight: 'bold',
+    padding: '4px 8px',
+    borderRadius: '12px',
+    fontSize: '12px',
+  },
+  questionCount: {
+    fontSize: '12px',
+    color: theme.subtleText,
+    fontWeight: '500',
+  },
   lectureActions: {
     display: 'flex',
     gap: '10px',
   },
   selectButton: {
     flex: 1,
-    padding: '10px',
-    backgroundColor: '#007bff',
-    color: 'white',
+    padding: '8px',
+    backgroundColor: theme.primary,
+    color: theme.primaryText,
     border: 'none',
     borderRadius: '4px',
     cursor: 'pointer',
     fontSize: '14px',
+    textAlign: 'center',
   },
   deleteButton: {
-    padding: '10px 15px',
-    backgroundColor: '#dc3545',
-    color: 'white',
+    padding: '8px 12px',
+    backgroundColor: theme.danger,
+    color: theme.dangerText,
     border: 'none',
     borderRadius: '4px',
     cursor: 'pointer',
     fontSize: '14px',
   },
-};
+});

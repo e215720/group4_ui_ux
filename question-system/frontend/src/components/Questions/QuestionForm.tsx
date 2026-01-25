@@ -1,5 +1,7 @@
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, useMemo } from 'react';
 import { createQuestion } from '../../services/api';
+import { useTheme, Theme } from '../../contexts/ThemeContext';
+import { useMediaQuery } from '../../hooks/useMediaQuery';
 
 interface QuestionFormProps {
   lectureId: number;
@@ -11,9 +13,17 @@ export function QuestionForm({ lectureId, onQuestionCreated }: QuestionFormProps
   const [content, setContent] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const { themeObject } = useTheme();
+  const isMobile = useMediaQuery('(max-width: 768px)');
+
+  const styles = useMemo(() => getStyles(themeObject, isMobile), [themeObject, isMobile]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (!title.trim() || !content.trim()) {
+      setError('タイトルと内容の両方を入力してください。');
+      return;
+    }
     setError('');
     setLoading(true);
 
@@ -29,34 +39,41 @@ export function QuestionForm({ lectureId, onQuestionCreated }: QuestionFormProps
     }
   };
 
+  const buttonStyle = {
+    ...styles.button,
+    ...(loading ? styles.buttonDisabled : {}),
+  };
+
   return (
     <div style={styles.container}>
       <h3 style={styles.title}>新しい質問を投稿</h3>
       <form onSubmit={handleSubmit} style={styles.form}>
         {error && <div style={styles.error}>{error}</div>}
         <div style={styles.field}>
-          <label style={styles.label}>タイトル</label>
+          <label htmlFor="question-title" style={styles.label}>タイトル</label>
           <input
+            id="question-title"
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             required
-            placeholder="質問のタイトルを入力"
+            placeholder="質問のタイトル"
             style={styles.input}
           />
         </div>
         <div style={styles.field}>
-          <label style={styles.label}>内容</label>
+          <label htmlFor="question-content" style={styles.label}>内容</label>
           <textarea
+            id="question-content"
             value={content}
             onChange={(e) => setContent(e.target.value)}
             required
-            placeholder="質問の詳細を入力"
-            rows={4}
+            placeholder="質問の詳細"
+            rows={5}
             style={styles.textarea}
           />
         </div>
-        <button type="submit" disabled={loading} style={styles.button}>
+        <button type="submit" disabled={loading} style={buttonStyle}>
           {loading ? '投稿中...' : '質問を投稿'}
         </button>
       </form>
@@ -64,57 +81,67 @@ export function QuestionForm({ lectureId, onQuestionCreated }: QuestionFormProps
   );
 }
 
-const styles: { [key: string]: React.CSSProperties } = {
+const getStyles = (theme: Theme, isMobile: boolean): { [key: string]: React.CSSProperties } => ({
   container: {
-    backgroundColor: '#f8f9fa',
-    padding: '20px',
-    borderRadius: '8px',
-    marginBottom: '20px',
+    padding: isMobile ? '10px' : '20px',
   },
   title: {
     marginTop: 0,
-    marginBottom: '15px',
+    marginBottom: '20px',
+    color: theme.text,
+    fontSize: isMobile ? '20px' : '22px',
   },
   form: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '15px',
+    gap: '20px',
   },
   field: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '5px',
+    gap: '8px',
   },
   label: {
     fontWeight: 'bold',
+    color: theme.text,
   },
   input: {
-    padding: '10px',
-    borderRadius: '4px',
-    border: '1px solid #ccc',
-    fontSize: '16px',
+    padding: '12px',
+    borderRadius: '5px',
+    border: `1px solid ${theme.border}`,
+    backgroundColor: theme.inputBg,
+    color: theme.text,
+    fontSize: isMobile ? '15px' : '16px',
   },
   textarea: {
-    padding: '10px',
-    borderRadius: '4px',
-    border: '1px solid #ccc',
-    fontSize: '16px',
+    padding: '12px',
+    borderRadius: '5px',
+    border: `1px solid ${theme.border}`,
+    backgroundColor: theme.inputBg,
+    color: theme.text,
+    fontSize: isMobile ? '15px' : '16px',
     resize: 'vertical',
+    minHeight: '100px',
   },
   button: {
-    padding: '12px',
-    backgroundColor: '#007bff',
-    color: 'white',
+    padding: isMobile ? '12px 20px' : '12px 24px',
+    backgroundColor: theme.primary,
+    color: theme.primaryText,
     border: 'none',
-    borderRadius: '4px',
-    fontSize: '16px',
+    borderRadius: '5px',
+    fontSize: isMobile ? '15px' : '16px',
     cursor: 'pointer',
     alignSelf: 'flex-start',
+    fontWeight: 'bold',
+  },
+  buttonDisabled: {
+    backgroundColor: theme.disabled,
+    cursor: 'not-allowed',
   },
   error: {
-    color: '#dc3545',
-    backgroundColor: '#f8d7da',
-    padding: '10px',
+    color: theme.dangerText,
+    backgroundColor: theme.danger,
+    padding: '12px',
     borderRadius: '4px',
   },
-};
+});

@@ -1,5 +1,7 @@
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, useMemo } from 'react';
 import { createLecture } from '../../services/api';
+import { useTheme, Theme } from '../../contexts/ThemeContext';
+import { useMediaQuery } from '../../hooks/useMediaQuery';
 
 interface LectureFormProps {
   onLectureCreated: () => void;
@@ -10,9 +12,17 @@ export function LectureForm({ onLectureCreated }: LectureFormProps) {
   const [description, setDescription] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const { themeObject } = useTheme();
+  const isMobile = useMediaQuery('(max-width: 768px)');
+
+  const styles = useMemo(() => getStyles(themeObject, isMobile), [themeObject, isMobile]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (!name.trim()) {
+      setError('講義名を入力してください。');
+      return;
+    }
     setError('');
     setLoading(true);
 
@@ -28,14 +38,20 @@ export function LectureForm({ onLectureCreated }: LectureFormProps) {
     }
   };
 
+  const buttonStyle = {
+    ...styles.button,
+    ...(loading ? styles.buttonDisabled : {}),
+  };
+
   return (
     <div style={styles.container}>
       <h3 style={styles.title}>新しい講義を作成</h3>
       <form onSubmit={handleSubmit} style={styles.form}>
         {error && <div style={styles.error}>{error}</div>}
         <div style={styles.field}>
-          <label style={styles.label}>講義名 *</label>
+          <label htmlFor="lecture-name" style={styles.label}>講義名 *</label>
           <input
+            id="lecture-name"
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -45,16 +61,17 @@ export function LectureForm({ onLectureCreated }: LectureFormProps) {
           />
         </div>
         <div style={styles.field}>
-          <label style={styles.label}>説明（任意）</label>
+          <label htmlFor="lecture-desc" style={styles.label}>説明（任意）</label>
           <textarea
+            id="lecture-desc"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="講義の説明を入力"
-            rows={2}
+            placeholder="講義の目的や概要など"
+            rows={3}
             style={styles.textarea}
           />
         </div>
-        <button type="submit" disabled={loading} style={styles.button}>
+        <button type="submit" disabled={loading} style={buttonStyle}>
           {loading ? '作成中...' : '講義を作成'}
         </button>
       </form>
@@ -62,60 +79,67 @@ export function LectureForm({ onLectureCreated }: LectureFormProps) {
   );
 }
 
-const styles: { [key: string]: React.CSSProperties } = {
+const getStyles = (theme: Theme, isMobile: boolean): { [key: string]: React.CSSProperties } => ({
   container: {
-    backgroundColor: '#e8f4f8',
-    padding: '20px',
-    borderRadius: '8px',
-    marginBottom: '20px',
-    border: '1px solid #b8daff',
+    padding: isMobile ? '10px' : '20px',
   },
   title: {
     marginTop: 0,
-    marginBottom: '15px',
-    color: '#004085',
+    marginBottom: '20px',
+    color: theme.text,
+    fontSize: isMobile ? '20px' : '22px',
   },
   form: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '15px',
+    gap: '20px',
   },
   field: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '5px',
+    gap: '8px',
   },
   label: {
     fontWeight: 'bold',
-    fontSize: '14px',
+    color: theme.text,
   },
   input: {
-    padding: '10px',
-    borderRadius: '4px',
-    border: '1px solid #ccc',
-    fontSize: '16px',
+    padding: '12px',
+    borderRadius: '5px',
+    border: `1px solid ${theme.border}`,
+    backgroundColor: theme.inputBg,
+    color: theme.text,
+    fontSize: isMobile ? '15px' : '16px',
   },
   textarea: {
-    padding: '10px',
-    borderRadius: '4px',
-    border: '1px solid #ccc',
-    fontSize: '16px',
+    padding: '12px',
+    borderRadius: '5px',
+    border: `1px solid ${theme.border}`,
+    backgroundColor: theme.inputBg,
+    color: theme.text,
+    fontSize: isMobile ? '15px' : '16px',
     resize: 'vertical',
+    minHeight: '80px',
   },
   button: {
-    padding: '12px',
-    backgroundColor: '#28a745',
-    color: 'white',
+    padding: isMobile ? '12px 20px' : '12px 24px',
+    backgroundColor: theme.success,
+    color: theme.successText,
     border: 'none',
-    borderRadius: '4px',
-    fontSize: '16px',
+    borderRadius: '5px',
+    fontSize: isMobile ? '15px' : '16px',
     cursor: 'pointer',
     alignSelf: 'flex-start',
+    fontWeight: 'bold',
+  },
+  buttonDisabled: {
+    backgroundColor: theme.disabled,
+    cursor: 'not-allowed',
   },
   error: {
-    color: '#dc3545',
-    backgroundColor: '#f8d7da',
-    padding: '10px',
+    color: theme.dangerText,
+    backgroundColor: theme.danger,
+    padding: '12px',
     borderRadius: '4px',
   },
-};
+});

@@ -1,19 +1,27 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Question, Lecture, getQuestions } from '../../services/api';
 import { QuestionItem } from './QuestionItem';
-import { QuestionForm } from './QuestionForm';
+import { useTheme, Theme } from '../../contexts/ThemeContext';
+import { useMediaQuery } from '../../hooks/useMediaQuery';
 
 interface QuestionListProps {
-  lecture: Lecture;
-  onBack: () => void;
+  lecture: Lecture | null;
+  isTeacher?: boolean;
 }
 
-export function QuestionList({ lecture, onBack }: QuestionListProps) {
+export function QuestionList({ lecture, isTeacher }: QuestionListProps) {
+  const { themeObject } = useTheme();
+  const isMobile = useMediaQuery('(max-width: 768px)');
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const styles = useMemo(() => getStyles(themeObject, isMobile), [themeObject, isMobile]);
+
   const fetchQuestions = useCallback(async () => {
+    if (!lecture) return;
+
+    setLoading(true);
     try {
       const { questions } = await getQuestions(lecture.id);
       setQuestions(questions);
@@ -23,11 +31,21 @@ export function QuestionList({ lecture, onBack }: QuestionListProps) {
     } finally {
       setLoading(false);
     }
-  }, [lecture.id]);
+  }, [lecture]);
 
   useEffect(() => {
     fetchQuestions();
   }, [fetchQuestions]);
+  
+  if (!lecture) {
+    return (
+      <div style={styles.placeholder}>
+        {isTeacher
+          ? '講義を選択して質問を表示します'
+          : '左のリストから講義を選択してください'}
+      </div>
+    );
+  }
 
   if (loading) {
     return <div style={styles.loading}>読み込み中...</div>;
@@ -35,88 +53,74 @@ export function QuestionList({ lecture, onBack }: QuestionListProps) {
 
   return (
     <div style={styles.container}>
-      <button onClick={onBack} style={styles.backButton}>
-        ← 講義一覧に戻る
-      </button>
-
-      <div style={styles.lectureHeader}>
-        <h2 style={styles.lectureName}>{lecture.name}</h2>
-        {lecture.description && (
-          <p style={styles.lectureDescription}>{lecture.description}</p>
-        )}
-      </div>
-
-      <QuestionForm lectureId={lecture.id} onQuestionCreated={fetchQuestions} />
-
       {error && <div style={styles.error}>{error}</div>}
 
-      <h3 style={styles.title}>質問一覧</h3>
-
       {questions.length === 0 ? (
-        <p style={styles.noQuestions}>この講義にはまだ質問がありません</p>
+        <div style={styles.noQuestions}>
+          <p>この講義にはまだ質問がありません。</p>
+          {!isTeacher && <p>最初の質問を投稿してみましょう！</p>}
+        </div>
       ) : (
-        questions.map((question) => (
-          <QuestionItem
-            key={question.id}
-            question={question}
-            onUpdate={fetchQuestions}
-          />
-        ))
+        <div style={styles.list}>
+          {questions.map((question) => (
+            <QuestionItem
+              key={question.id}
+              question={question}
+              onUpdate={fetchQuestions}
+              isTeacher={isTeacher}
+            />
+          ))}
+        </div>
       )}
     </div>
   );
 }
 
-const styles: { [key: string]: React.CSSProperties } = {
+const getStyles = (theme: Theme, isMobile: boolean): { [key: string]: React.CSSProperties } => ({
   container: {
-    maxWidth: '800px',
-    margin: '0 auto',
-    padding: '20px',
+    padding: isMobile ? '0 5px' : '0 10px',
+    height: '100%',
   },
-  backButton: {
-    padding: '8px 16px',
-    backgroundColor: 'transparent',
-    color: '#007bff',
-    border: '1px solid #007bff',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    fontSize: '14px',
-    marginBottom: '20px',
-  },
-  lectureHeader: {
-    backgroundColor: '#e8f4f8',
-    padding: '15px 20px',
+  placeholder: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: '100%',
+    color: theme.subtleText,
+    fontSize: isMobile ? '16px' : '18px',
+    textAlign: 'center',
+    backgroundColor: theme.formBg,
     borderRadius: '8px',
-    marginBottom: '20px',
-    borderLeft: '4px solid #007bff',
-  },
-  lectureName: {
-    margin: 0,
-    color: '#004085',
-  },
-  lectureDescription: {
-    margin: '10px 0 0 0',
-    color: '#666',
-    fontSize: '14px',
   },
   title: {
     marginBottom: '20px',
+    fontSize: '22px',
+    color: theme.text,
   },
   loading: {
     textAlign: 'center',
     padding: '40px',
-    color: '#6c757d',
+    color: theme.subtleText,
+    fontSize: '16px',
   },
   error: {
-    color: '#dc3545',
-    backgroundColor: '#f8d7da',
+    color: theme.dangerText,
+    backgroundColor: theme.danger,
     padding: '15px',
     borderRadius: '4px',
     marginBottom: '20px',
   },
   noQuestions: {
     textAlign: 'center',
-    color: '#6c757d',
-    padding: '40px',
+    color: theme.subtleText,
+    padding: '40px 20px',
+    backgroundColor: theme.formBg,
+    borderRadius: '8px',
+    lineHeight: '1.6',
   },
-};
+  list: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '15px',
+  }
+});
