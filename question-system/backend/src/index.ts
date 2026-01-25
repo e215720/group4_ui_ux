@@ -1,9 +1,12 @@
 import express from 'express';
 import cors from 'cors';
+import path from 'path';
 import { PrismaClient } from '@prisma/client';
 import authRoutes from './routes/auth';
 import lectureRoutes from './routes/lectures';
 import questionRoutes from './routes/questions';
+import tagRoutes from './routes/tags';
+import uploadRoutes from './routes/uploads';
 
 const app = express();
 const prisma = new PrismaClient();
@@ -12,6 +15,9 @@ const PORT = process.env.PORT || 4000;
 app.use(cors());
 app.use(express.json());
 
+// Serve uploaded files
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
 // Make prisma available to routes
 app.set('prisma', prisma);
 
@@ -19,6 +25,8 @@ app.set('prisma', prisma);
 app.use('/api/auth', authRoutes);
 app.use('/api/lectures', lectureRoutes);
 app.use('/api/questions', questionRoutes);
+app.use('/api/lectures/:lectureId/tags', tagRoutes);
+app.use('/api/uploads', uploadRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

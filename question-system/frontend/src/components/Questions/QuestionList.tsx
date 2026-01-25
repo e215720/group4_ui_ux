@@ -3,6 +3,7 @@ import { Question, Lecture, getQuestions } from '../../services/api';
 import { QuestionItem } from './QuestionItem';
 import { useTheme, Theme } from '../../contexts/ThemeContext';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
+import { TagFilter } from '../Tags';
 
 interface QuestionListProps {
   lecture: Lecture | null;
@@ -15,6 +16,7 @@ export function QuestionList({ lecture, isTeacher }: QuestionListProps) {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
 
   const styles = useMemo(() => getStyles(themeObject, isMobile), [themeObject, isMobile]);
 
@@ -23,7 +25,10 @@ export function QuestionList({ lecture, isTeacher }: QuestionListProps) {
 
     setLoading(true);
     try {
-      const { questions } = await getQuestions(lecture.id);
+      const { questions } = await getQuestions(
+        lecture.id,
+        selectedTagIds.length > 0 ? selectedTagIds : undefined
+      );
       setQuestions(questions);
       setError('');
     } catch (err) {
@@ -31,11 +36,13 @@ export function QuestionList({ lecture, isTeacher }: QuestionListProps) {
     } finally {
       setLoading(false);
     }
-  }, [lecture]);
+  }, [lecture, selectedTagIds]);
 
   useEffect(() => {
-    fetchQuestions();
-  }, [fetchQuestions]);
+    if (lecture) {
+      fetchQuestions();
+    }
+  }, [lecture, fetchQuestions]);
   
   if (!lecture) {
     return (
@@ -47,6 +54,10 @@ export function QuestionList({ lecture, isTeacher }: QuestionListProps) {
     );
   }
 
+  const handleTagFilterChange = (tagIds: number[]) => {
+    setSelectedTagIds(tagIds);
+  };
+
   if (loading) {
     return <div style={styles.loading}>読み込み中...</div>;
   }
@@ -55,10 +66,20 @@ export function QuestionList({ lecture, isTeacher }: QuestionListProps) {
     <div style={styles.container}>
       {error && <div style={styles.error}>{error}</div>}
 
+      <TagFilter
+        lectureId={lecture.id}
+        selectedTagIds={selectedTagIds}
+        onChange={handleTagFilterChange}
+      />
+
+      <h3 style={styles.title}>質問一覧</h3>
+
       {questions.length === 0 ? (
         <div style={styles.noQuestions}>
-          <p>この講義にはまだ質問がありません。</p>
-          {!isTeacher && <p>最初の質問を投稿してみましょう！</p>}
+          {selectedTagIds.length > 0
+            ? '選択したタグに一致する質問がありません'
+            : 'この講義にはまだ質問がありません'}
+          {!isTeacher && selectedTagIds.length === 0 && <p>最初の質問を投稿してみましょう！</p>}
         </div>
       ) : (
         <div style={styles.list}>
@@ -93,6 +114,7 @@ const getStyles = (theme: Theme, isMobile: boolean): { [key: string]: React.CSSP
     borderRadius: '8px',
   },
   title: {
+    marginTop: '20px',
     marginBottom: '20px',
     fontSize: '22px',
     color: theme.text,

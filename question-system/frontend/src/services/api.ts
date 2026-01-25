@@ -32,6 +32,18 @@ interface Lecture {
   createdAt: string;
 }
 
+interface Tag {
+  id: number;
+  name: string;
+  lectureId: number;
+}
+
+interface QuestionImage {
+  id: number;
+  filename: string;
+  path: string;
+}
+
 interface Question {
   id: number;
   title: string;
@@ -41,6 +53,8 @@ interface Question {
     id: number;
     name: string;
   };
+  tags: Tag[];
+  images: QuestionImage[];
   answers: Answer[];
   resolved: boolean;
   createdAt: string;
@@ -133,11 +147,50 @@ export async function deleteLecture(id: number): Promise<{ message: string }> {
   return handleResponse<{ message: string }>(response);
 }
 
+// Tags API
+export async function getTags(lectureId: number): Promise<{ tags: Tag[] }> {
+  const response = await fetch(`${API_BASE}/lectures/${lectureId}/tags`, {
+    headers: getAuthHeaders(),
+  });
+  return handleResponse<{ tags: Tag[] }>(response);
+}
+
+export async function createTag(lectureId: number, name: string): Promise<{ tag: Tag }> {
+  const response = await fetch(`${API_BASE}/lectures/${lectureId}/tags`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ name }),
+  });
+  return handleResponse<{ tag: Tag }>(response);
+}
+
+// Upload API
+export async function uploadImage(file: File): Promise<{ image: { filename: string; path: string; originalName: string } }> {
+  const token = localStorage.getItem('token');
+  const formData = new FormData();
+  formData.append('image', file);
+
+  const response = await fetch(`${API_BASE}/uploads`, {
+    method: 'POST',
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: formData,
+  });
+  return handleResponse<{ image: { filename: string; path: string; originalName: string } }>(response);
+}
+
 // Questions API
-export async function getQuestions(lectureId?: number): Promise<{ questions: Question[] }> {
-  const url = lectureId
-    ? `${API_BASE}/questions?lectureId=${lectureId}`
-    : `${API_BASE}/questions`;
+export async function getQuestions(lectureId?: number, tagIds?: number[]): Promise<{ questions: Question[] }> {
+  const params = new URLSearchParams();
+  if (lectureId) {
+    params.append('lectureId', lectureId.toString());
+  }
+  if (tagIds && tagIds.length > 0) {
+    params.append('tags', tagIds.join(','));
+  }
+  const queryString = params.toString();
+  const url = queryString ? `${API_BASE}/questions?${queryString}` : `${API_BASE}/questions`;
   const response = await fetch(url, {
     headers: getAuthHeaders(),
   });
@@ -154,12 +207,26 @@ export async function getQuestion(id: number): Promise<{ question: Question }> {
 export async function createQuestion(
   title: string,
   content: string,
-  lectureId: number
+  lectureId: number,
+  tagIds?: number[],
+  images?: { filename: string; path: string }[]
 ): Promise<{ question: Question }> {
   const response = await fetch(`${API_BASE}/questions`, {
     method: 'POST',
     headers: getAuthHeaders(),
-    body: JSON.stringify({ title, content, lectureId }),
+    body: JSON.stringify({ title, content, lectureId, tagIds, images }),
+  });
+  return handleResponse<{ question: Question }>(response);
+}
+
+export async function updateQuestionTags(
+  questionId: number,
+  tagIds: number[]
+): Promise<{ question: Question }> {
+  const response = await fetch(`${API_BASE}/questions/${questionId}/tags`, {
+    method: 'PUT',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ tagIds }),
   });
   return handleResponse<{ question: Question }>(response);
 }
@@ -184,4 +251,4 @@ export async function addAnswer(
   return handleResponse<{ answer: Answer }>(response);
 }
 
-export type { User, Question, Answer, Author, Lecture };
+export type { User, Question, Answer, Author, Lecture, Tag, QuestionImage };
