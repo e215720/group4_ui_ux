@@ -1,6 +1,7 @@
-import { useState, useEffect, KeyboardEvent } from 'react';
+import { useState, useEffect, KeyboardEvent, useMemo } from 'react';
 import { Tag, getTags, createTag } from '../../services/api';
 import { TagBadge } from './TagBadge';
+import { useTheme, Theme } from '../../contexts/ThemeContext';
 
 interface TagInputProps {
   lectureId: number;
@@ -13,6 +14,8 @@ export function TagInput({ lectureId, selectedTags, onChange }: TagInputProps) {
   const [inputValue, setInputValue] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const { themeObject } = useTheme();
+  const styles = useMemo(() => getStyles(themeObject), [themeObject]);
 
   useEffect(() => {
     const fetchTags = async () => {
@@ -139,20 +142,22 @@ export function TagInput({ lectureId, selectedTags, onChange }: TagInputProps) {
   );
 }
 
-const styles: { [key: string]: React.CSSProperties } = {
+const getStyles = (theme: Theme): { [key: string]: React.CSSProperties } => ({
   container: {
     position: 'relative',
   },
   label: {
     fontWeight: 'bold',
     display: 'block',
-    marginBottom: '5px',
+    marginBottom: '8px',
+    color: theme.text,
   },
   selectedTags: {
     display: 'flex',
     flexWrap: 'wrap',
     gap: '6px',
     marginBottom: '8px',
+    minHeight: '28px',
   },
   inputWrapper: {
     position: 'relative',
@@ -160,9 +165,11 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   input: {
     width: '100%',
-    padding: '10px',
-    borderRadius: '4px',
-    border: '1px solid #ccc',
+    padding: '12px',
+    borderRadius: '5px',
+    border: `1px solid ${theme.border}`,
+    backgroundColor: theme.inputBg,
+    color: theme.text,
     fontSize: '16px',
     boxSizing: 'border-box',
   },
@@ -171,25 +178,27 @@ const styles: { [key: string]: React.CSSProperties } = {
     top: '100%',
     left: 0,
     right: 0,
-    backgroundColor: 'white',
-    border: '1px solid #ccc',
+    backgroundColor: theme.formBg,
+    border: `1px solid ${theme.border}`,
     borderRadius: '4px',
     marginTop: '4px',
     maxHeight: '200px',
     overflowY: 'auto',
     boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+    zIndex: 11,
   },
   dropdownItem: {
     padding: '10px 12px',
     cursor: 'pointer',
-    borderBottom: '1px solid #eee',
+    borderBottom: `1px solid ${theme.border}`,
+    color: theme.text,
   },
   createItem: {
-    color: '#1976d2',
+    color: theme.primary,
     fontWeight: 500,
   },
   hash: {
-    color: '#1976d2',
+    color: theme.primary,
     fontWeight: 700,
     marginRight: '2px',
   },
@@ -201,4 +210,4 @@ const styles: { [key: string]: React.CSSProperties } = {
     bottom: 0,
     zIndex: 5,
   },
-};
+});

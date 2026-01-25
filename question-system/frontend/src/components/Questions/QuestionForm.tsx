@@ -1,5 +1,7 @@
-import { useState, FormEvent, ChangeEvent, useRef } from 'react';
+import { useState, FormEvent, useMemo, ChangeEvent, useRef } from 'react';
 import { createQuestion, uploadImage, Tag } from '../../services/api';
+import { useTheme, Theme } from '../../contexts/ThemeContext';
+import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { TagInput } from '../Tags';
 
 interface UploadedImage {
@@ -27,6 +29,10 @@ export function QuestionForm({ lectureId, onQuestionCreated }: QuestionFormProps
     content: false,
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { themeObject } = useTheme();
+  const isMobile = useMediaQuery('(max-width: 768px)');
+
+  const styles = useMemo(() => getStyles(themeObject, isMobile), [themeObject, isMobile]);
 
   const validateFields = () => {
     const errors: { title?: string; content?: string } = {};
@@ -88,6 +94,10 @@ export function QuestionForm({ lectureId, onQuestionCreated }: QuestionFormProps
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (!title.trim() || !content.trim()) {
+      setError('タイトルと内容の両方を入力してください。');
+      return;
+    }
     setError('');
     setTouched({ title: true, content: true });
 
@@ -129,6 +139,7 @@ export function QuestionForm({ lectureId, onQuestionCreated }: QuestionFormProps
             タイトル<span style={styles.required}>*</span>
           </label>
           <input
+            id="question-title"
             type="text"
             value={title}
             onChange={(e) => {
@@ -151,6 +162,7 @@ export function QuestionForm({ lectureId, onQuestionCreated }: QuestionFormProps
             内容<span style={styles.required}>*</span>
           </label>
           <textarea
+            id="question-content"
             value={content}
             onChange={(e) => {
               setContent(e.target.value);
@@ -229,29 +241,29 @@ export function QuestionForm({ lectureId, onQuestionCreated }: QuestionFormProps
   );
 }
 
-const styles: { [key: string]: React.CSSProperties } = {
+const getStyles = (theme: Theme, isMobile: boolean): { [key: string]: React.CSSProperties } => ({
   container: {
-    backgroundColor: '#f8f9fa',
-    padding: '20px',
-    borderRadius: '8px',
-    marginBottom: '20px',
+    padding: isMobile ? '10px' : '20px',
   },
   title: {
     marginTop: 0,
-    marginBottom: '15px',
+    marginBottom: '20px',
+    color: theme.text,
+    fontSize: isMobile ? '20px' : '22px',
   },
   form: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '15px',
+    gap: '20px',
   },
   field: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '5px',
+    gap: '8px',
   },
   label: {
     fontWeight: 'bold',
+    color: theme.text,
   },
   required: {
     color: '#dc3545',
@@ -263,40 +275,46 @@ const styles: { [key: string]: React.CSSProperties } = {
     marginTop: '4px',
   },
   input: {
-    padding: '10px',
-    borderRadius: '4px',
-    border: '1px solid #ccc',
-    fontSize: '16px',
+    padding: '12px',
+    borderRadius: '5px',
+    border: `1px solid ${theme.border}`,
+    backgroundColor: theme.inputBg,
+    color: theme.text,
+    fontSize: isMobile ? '15px' : '16px',
   },
   textarea: {
-    padding: '10px',
-    borderRadius: '4px',
-    border: '1px solid #ccc',
-    fontSize: '16px',
+    padding: '12px',
+    borderRadius: '5px',
+    border: `1px solid ${theme.border}`,
+    backgroundColor: theme.inputBg,
+    color: theme.text,
+    fontSize: isMobile ? '15px' : '16px',
     resize: 'vertical',
+    minHeight: '100px',
   },
   inputError: {
     borderColor: '#dc3545',
     backgroundColor: '#fff8f8',
   },
   button: {
-    padding: '12px',
-    backgroundColor: '#007bff',
-    color: 'white',
+    padding: isMobile ? '12px 20px' : '12px 24px',
+    backgroundColor: theme.primary,
+    color: theme.primaryText,
     border: 'none',
-    borderRadius: '4px',
-    fontSize: '16px',
+    borderRadius: '5px',
+    fontSize: isMobile ? '15px' : '16px',
     cursor: 'pointer',
     alignSelf: 'flex-start',
+    fontWeight: 'bold',
   },
   buttonDisabled: {
-    backgroundColor: '#6c757d',
+    backgroundColor: theme.disabled,
     cursor: 'not-allowed',
   },
   error: {
-    color: '#dc3545',
-    backgroundColor: '#f8d7da',
-    padding: '10px',
+    color: theme.dangerText,
+    backgroundColor: theme.danger,
+    padding: '12px',
     borderRadius: '4px',
   },
   imageUploadArea: {
@@ -309,8 +327,8 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   uploadButton: {
     padding: '8px 16px',
-    backgroundColor: '#6c757d',
-    color: 'white',
+    backgroundColor: theme.subtleText,
+    color: theme.body,
     border: 'none',
     borderRadius: '4px',
     cursor: 'pointer',
@@ -318,7 +336,7 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   uploadHint: {
     fontSize: '12px',
-    color: '#6c757d',
+    color: theme.subtleText,
   },
   imagePreviewContainer: {
     display: 'flex',
@@ -336,7 +354,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     height: '100%',
     objectFit: 'cover',
     borderRadius: '4px',
-    border: '1px solid #dee2e6',
+    border: `1px solid ${theme.border}`,
   },
   removeImageButton: {
     position: 'absolute',
@@ -345,8 +363,8 @@ const styles: { [key: string]: React.CSSProperties } = {
     width: '24px',
     height: '24px',
     borderRadius: '50%',
-    backgroundColor: '#dc3545',
-    color: 'white',
+    backgroundColor: theme.danger,
+    color: theme.dangerText,
     border: 'none',
     cursor: 'pointer',
     display: 'flex',
@@ -355,4 +373,4 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: '14px',
     fontWeight: 'bold',
   },
-};
+});

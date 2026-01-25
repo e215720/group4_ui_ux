@@ -1,26 +1,33 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Question, Lecture, getQuestions } from '../../services/api';
 import { QuestionItem } from './QuestionItem';
-import { QuestionForm } from './QuestionForm';
+import { useTheme, Theme } from '../../contexts/ThemeContext';
+import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { TagFilter } from '../Tags';
 
 const POLLING_INTERVAL = 5000; // 5秒ごとに更新
 
 interface QuestionListProps {
-  lecture: Lecture;
-  onBack: () => void;
+  lecture: Lecture | null;
+  isTeacher?: boolean;
 }
 
-export function QuestionList({ lecture, onBack }: QuestionListProps) {
+export function QuestionList({ lecture, isTeacher }: QuestionListProps) {
+  const { themeObject } = useTheme();
+  const isMobile = useMediaQuery('(max-width: 768px)');
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const isMountedRef = useRef(true);
 
+  const styles = useMemo(() => getStyles(themeObject, isMobile), [themeObject, isMobile]);
+
   const fetchQuestions = useCallback(async (showLoading = true) => {
+    if (!lecture) return;
+
     if (showLoading) {
       setLoading(true);
     }
@@ -43,23 +50,25 @@ export function QuestionList({ lecture, onBack }: QuestionListProps) {
         setLoading(false);
       }
     }
-  }, [lecture.id, selectedTagIds]);
+  }, [lecture, selectedTagIds]);
 
   // 初回読み込み
   useEffect(() => {
-    fetchQuestions(true);
-  }, [fetchQuestions]);
+    if (lecture) {
+      fetchQuestions(true);
+    }
+  }, [lecture, fetchQuestions]);
 
   // 自動更新（ポーリング）
   useEffect(() => {
-    if (!autoRefresh) return;
+    if (!autoRefresh || !lecture) return;
 
     const intervalId = setInterval(() => {
       fetchQuestions(false); // サイレント更新（ローディング表示なし）
     }, POLLING_INTERVAL);
 
     return () => clearInterval(intervalId);
-  }, [autoRefresh, fetchQuestions]);
+  }, [autoRefresh, fetchQuestions, lecture]);
 
   // コンポーネントのアンマウント時にフラグを更新
   useEffect(() => {
@@ -76,6 +85,16 @@ export function QuestionList({ lecture, onBack }: QuestionListProps) {
   const formatLastUpdated = (date: Date) => {
     return date.toLocaleTimeString('ja-JP');
   };
+  
+  if (!lecture) {
+    return (
+      <div style={styles.placeholder}>
+        {isTeacher
+          ? '講義を選択して質問を表示します'
+          : '左のリストから講義を選択してください'}
+      </div>
+    );
+  }
 
   if (loading) {
     return <div style={styles.loading}>読み込み中...</div>;
@@ -83,19 +102,6 @@ export function QuestionList({ lecture, onBack }: QuestionListProps) {
 
   return (
     <div style={styles.container}>
-      <button onClick={onBack} style={styles.backButton}>
-        ← 講義一覧に戻る
-      </button>
-
-      <div style={styles.lectureHeader}>
-        <h2 style={styles.lectureName}>{lecture.name}</h2>
-        {lecture.description && (
-          <p style={styles.lectureDescription}>{lecture.description}</p>
-        )}
-      </div>
-
-      <QuestionForm lectureId={lecture.id} onQuestionCreated={fetchQuestions} />
-
       {error && <div style={styles.error}>{error}</div>}
 
       <TagFilter
@@ -132,55 +138,43 @@ export function QuestionList({ lecture, onBack }: QuestionListProps) {
       </div>
 
       {questions.length === 0 ? (
-        <p style={styles.noQuestions}>
+        <div style={styles.noQuestions}>
           {selectedTagIds.length > 0
             ? '選択したタグに一致する質問がありません'
             : 'この講義にはまだ質問がありません'}
-        </p>
+          {!isTeacher && selectedTagIds.length === 0 && <p>最初の質問を投稿してみましょう！</p>}
+        </div>
       ) : (
-        questions.map((question) => (
-          <QuestionItem
-            key={question.id}
-            question={question}
-            onUpdate={fetchQuestions}
-          />
-        ))
+        <div style={styles.list}>
+          {questions.map((question) => (
+            <QuestionItem
+              key={question.id}
+              question={question}
+              onUpdate={() => fetchQuestions(false)}
+              isTeacher={isTeacher}
+            />
+          ))}
+        </div>
       )}
     </div>
   );
 }
 
-const styles: { [key: string]: React.CSSProperties } = {
+const getStyles = (theme: Theme, isMobile: boolean): { [key: string]: React.CSSProperties } => ({
   container: {
-    maxWidth: '800px',
-    margin: '0 auto',
-    padding: '20px',
+    padding: isMobile ? '0 5px' : '0 10px',
+    height: '100%',
   },
-  backButton: {
-    padding: '8px 16px',
-    backgroundColor: 'transparent',
-    color: '#007bff',
-    border: '1px solid #007bff',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    fontSize: '14px',
-    marginBottom: '20px',
-  },
-  lectureHeader: {
-    backgroundColor: '#e8f4f8',
-    padding: '15px 20px',
+  placeholder: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: '100%',
+    color: theme.subtleText,
+    fontSize: isMobile ? '16px' : '18px',
+    textAlign: 'center',
+    backgroundColor: theme.formBg,
     borderRadius: '8px',
-    marginBottom: '20px',
-    borderLeft: '4px solid #007bff',
-  },
-  lectureName: {
-    margin: 0,
-    color: '#004085',
-  },
-  lectureDescription: {
-    margin: '10px 0 0 0',
-    color: '#666',
-    fontSize: '14px',
   },
   listHeader: {
     display: 'flex',
@@ -192,6 +186,8 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   title: {
     margin: 0,
+    fontSize: '22px',
+    color: theme.text,
   },
   refreshControls: {
     display: 'flex',
@@ -204,18 +200,18 @@ const styles: { [key: string]: React.CSSProperties } = {
     alignItems: 'center',
     gap: '6px',
     cursor: 'pointer',
-    color: '#495057',
+    color: theme.subtleText,
   },
   checkbox: {
     cursor: 'pointer',
   },
   lastUpdated: {
-    color: '#6c757d',
+    color: theme.subtleText,
     fontSize: '13px',
   },
   refreshButton: {
     padding: '4px 10px',
-    backgroundColor: '#007bff',
+    backgroundColor: theme.primary,
     color: 'white',
     border: 'none',
     borderRadius: '4px',
@@ -226,18 +222,27 @@ const styles: { [key: string]: React.CSSProperties } = {
   loading: {
     textAlign: 'center',
     padding: '40px',
-    color: '#6c757d',
+    color: theme.subtleText,
+    fontSize: '16px',
   },
   error: {
-    color: '#dc3545',
-    backgroundColor: '#f8d7da',
+    color: theme.dangerText,
+    backgroundColor: theme.danger,
     padding: '15px',
     borderRadius: '4px',
     marginBottom: '20px',
   },
   noQuestions: {
     textAlign: 'center',
-    color: '#6c757d',
-    padding: '40px',
+    color: theme.subtleText,
+    padding: '40px 20px',
+    backgroundColor: theme.formBg,
+    borderRadius: '8px',
+    lineHeight: '1.6',
   },
-};
+  list: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '15px',
+  }
+});
