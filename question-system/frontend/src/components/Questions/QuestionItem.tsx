@@ -212,6 +212,23 @@ const styles: { [key: string]: React.CSSProperties } = {
     marginBottom: '15px',
     lineHeight: 1.6,
   },
+  imagesSection: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '10px',
+    marginBottom: '15px',
+  },
+  imageLink: {
+    display: 'block',
+  },
+  questionImage: {
+    maxWidth: '300px',
+    maxHeight: '200px',
+    objectFit: 'contain',
+    borderRadius: '8px',
+    border: '1px solid #dee2e6',
+    cursor: 'pointer',
+  },
   tagsSection: {
     display: 'flex',
     alignItems: 'center',
