@@ -1,8 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Question, Lecture, getQuestions } from '../../services/api';
 import { QuestionItem } from './QuestionItem';
 import { QuestionForm } from './QuestionForm';
 import { TagFilter } from '../Tags';
+
+const POLLING_INTERVAL = 5000; // 5秒ごとに更新
 
 interface QuestionListProps {
   lecture: Lecture;
@@ -14,29 +16,65 @@ export function QuestionList({ lecture, onBack }: QuestionListProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const isMountedRef = useRef(true);
 
-  const fetchQuestions = useCallback(async () => {
-    setLoading(true);
+  const fetchQuestions = useCallback(async (showLoading = true) => {
+    if (showLoading) {
+      setLoading(true);
+    }
     try {
       const { questions } = await getQuestions(
         lecture.id,
         selectedTagIds.length > 0 ? selectedTagIds : undefined
       );
-      setQuestions(questions);
-      setError('');
+      if (isMountedRef.current) {
+        setQuestions(questions);
+        setLastUpdated(new Date());
+        setError('');
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : '質問の取得に失敗しました');
+      if (isMountedRef.current) {
+        setError(err instanceof Error ? err.message : '質問の取得に失敗しました');
+      }
     } finally {
-      setLoading(false);
+      if (isMountedRef.current && showLoading) {
+        setLoading(false);
+      }
     }
   }, [lecture.id, selectedTagIds]);
 
+  // 初回読み込み
   useEffect(() => {
-    fetchQuestions();
+    fetchQuestions(true);
   }, [fetchQuestions]);
+
+  // 自動更新（ポーリング）
+  useEffect(() => {
+    if (!autoRefresh) return;
+
+    const intervalId = setInterval(() => {
+      fetchQuestions(false); // サイレント更新（ローディング表示なし）
+    }, POLLING_INTERVAL);
+
+    return () => clearInterval(intervalId);
+  }, [autoRefresh, fetchQuestions]);
+
+  // コンポーネントのアンマウント時にフラグを更新
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const handleTagFilterChange = (tagIds: number[]) => {
     setSelectedTagIds(tagIds);
+  };
+
+  const formatLastUpdated = (date: Date) => {
+    return date.toLocaleTimeString('ja-JP');
   };
 
   if (loading) {
@@ -66,7 +104,32 @@ export function QuestionList({ lecture, onBack }: QuestionListProps) {
         onChange={handleTagFilterChange}
       />
 
-      <h3 style={styles.title}>質問一覧</h3>
+      <div style={styles.listHeader}>
+        <h3 style={styles.title}>質問一覧</h3>
+        <div style={styles.refreshControls}>
+          <label style={styles.autoRefreshLabel}>
+            <input
+              type="checkbox"
+              checked={autoRefresh}
+              onChange={(e) => setAutoRefresh(e.target.checked)}
+              style={styles.checkbox}
+            />
+            自動更新
+          </label>
+          {lastUpdated && (
+            <span style={styles.lastUpdated}>
+              最終更新: {formatLastUpdated(lastUpdated)}
+            </span>
+          )}
+          <button
+            onClick={() => fetchQuestions(false)}
+            style={styles.refreshButton}
+            title="今すぐ更新"
+          >
+            ↻
+          </button>
+        </div>
+      </div>
 
       {questions.length === 0 ? (
         <p style={styles.noQuestions}>
@@ -119,8 +182,46 @@ const styles: { [key: string]: React.CSSProperties } = {
     color: '#666',
     fontSize: '14px',
   },
-  title: {
+  listHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: '20px',
+    flexWrap: 'wrap',
+    gap: '10px',
+  },
+  title: {
+    margin: 0,
+  },
+  refreshControls: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '15px',
+    fontSize: '14px',
+  },
+  autoRefreshLabel: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    cursor: 'pointer',
+    color: '#495057',
+  },
+  checkbox: {
+    cursor: 'pointer',
+  },
+  lastUpdated: {
+    color: '#6c757d',
+    fontSize: '13px',
+  },
+  refreshButton: {
+    padding: '4px 10px',
+    backgroundColor: '#007bff',
+    color: 'white',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    fontSize: '16px',
+    lineHeight: 1,
   },
   loading: {
     textAlign: 'center',

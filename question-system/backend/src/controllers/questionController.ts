@@ -268,6 +268,42 @@ export async function addAnswer(req: AuthRequest, res: Response): Promise<void> 
   }
 }
 
+export async function deleteQuestion(req: AuthRequest, res: Response): Promise<void> {
+  const prisma: PrismaClient = req.app.get('prisma');
+  const { id } = req.params;
+  const userId = req.user?.id;
+
+  if (!userId) {
+    res.status(401).json({ error: '認証が必要です' });
+    return;
+  }
+
+  try {
+    const question = await prisma.question.findUnique({
+      where: { id: parseInt(id) },
+    });
+
+    if (!question) {
+      res.status(404).json({ error: '質問が見つかりません' });
+      return;
+    }
+
+    if (question.authorId !== userId) {
+      res.status(403).json({ error: '削除権限がありません' });
+      return;
+    }
+
+    await prisma.question.delete({
+      where: { id: parseInt(id) },
+    });
+
+    res.json({ message: '質問を削除しました' });
+  } catch (error) {
+    console.error('Delete question error:', error);
+    res.status(500).json({ error: '質問の削除に失敗しました' });
+  }
+}
+
 export async function updateQuestionTags(req: AuthRequest, res: Response): Promise<void> {
   const prisma: PrismaClient = req.app.get('prisma');
   const { id } = req.params;

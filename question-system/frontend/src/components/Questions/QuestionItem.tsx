@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Question, Tag, resolveQuestion, updateQuestionTags } from '../../services/api';
+import { Question, Tag, resolveQuestion, updateQuestionTags, deleteQuestion } from '../../services/api';
 import { useAuth } from '../../hooks/useAuth';
 import { AnswerForm } from './AnswerForm';
 import { TagBadge, TagInput } from '../Tags';
@@ -14,6 +14,7 @@ export function QuestionItem({ question, onUpdate }: QuestionItemProps) {
   const [isEditingTags, setIsEditingTags] = useState(false);
   const [editingTags, setEditingTags] = useState<Tag[]>([]);
   const [savingTags, setSavingTags] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const { user } = useAuth();
 
   const isAuthor = user?.id === question.author.id;
@@ -47,6 +48,23 @@ export function QuestionItem({ question, onUpdate }: QuestionItemProps) {
       onUpdate();
     } catch (err) {
       console.error('Failed to resolve question:', err);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm('この質問を削除しますか？削除すると元に戻せません。')) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      await deleteQuestion(question.id);
+      onUpdate();
+    } catch (err) {
+      console.error('Failed to delete question:', err);
+      alert('質問の削除に失敗しました');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -146,6 +164,15 @@ export function QuestionItem({ question, onUpdate }: QuestionItemProps) {
         {!question.resolved && (
           <button onClick={handleResolve} style={styles.resolveButton}>
             解決済みにする
+          </button>
+        )}
+        {isAuthor && (
+          <button
+            onClick={handleDelete}
+            disabled={isDeleting}
+            style={styles.deleteButton}
+          >
+            {isDeleting ? '削除中...' : '削除'}
           </button>
         )}
       </div>
@@ -293,6 +320,14 @@ const styles: { [key: string]: React.CSSProperties } = {
   resolveButton: {
     padding: '8px 16px',
     backgroundColor: '#28a745',
+    color: 'white',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer',
+  },
+  deleteButton: {
+    padding: '8px 16px',
+    backgroundColor: '#dc3545',
     color: 'white',
     border: 'none',
     borderRadius: '4px',
