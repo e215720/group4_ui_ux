@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Tag, getTags } from '../../services/api';
+import { useTheme, Theme } from '../../contexts/ThemeContext';
 
 interface TagFilterProps {
   lectureId: number;
@@ -10,6 +11,9 @@ interface TagFilterProps {
 export function TagFilter({ lectureId, selectedTagIds, onChange }: TagFilterProps) {
   const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
+  const { themeObject } = useTheme();
+  const styles = useMemo(() => getStyles(themeObject, isOpen), [themeObject, isOpen]);
 
   useEffect(() => {
     const fetchTags = async () => {
@@ -47,66 +51,102 @@ export function TagFilter({ lectureId, selectedTagIds, onChange }: TagFilterProp
 
   return (
     <div style={styles.container}>
-      <div style={styles.header}>
-        <span style={styles.title}>タグでフィルター</span>
-        {selectedTagIds.length > 0 && (
-          <button onClick={handleClearAll} style={styles.clearButton}>
+      <div onClick={() => setIsOpen(!isOpen)} style={styles.header}>
+        <div style={styles.titleWrapper}>
+          <span style={styles.chevron}>▼</span>
+          <span style={styles.title}>タグでフィルター</span>
+          {selectedTagIds.length > 0 && (
+            <span style={styles.countBadge}>{selectedTagIds.length}</span>
+          )}
+        </div>
+        {isOpen && selectedTagIds.length > 0 && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleClearAll();
+            }}
+            style={styles.clearButton}
+          >
             クリア
           </button>
         )}
       </div>
-      <div style={styles.tagList}>
-        {tags.map((tag) => {
-          const isSelected = selectedTagIds.includes(tag.id);
-          return (
-            <label
-              key={tag.id}
-              style={{
-                ...styles.tagItem,
-                ...(isSelected ? styles.tagItemSelected : {}),
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={isSelected}
-                onChange={() => handleToggleTag(tag.id)}
-                style={styles.checkbox}
-              />
-              <span style={styles.hash}>#</span>
-              <span style={styles.tagName}>{tag.name}</span>
-            </label>
-          );
-        })}
-      </div>
+      {isOpen && (
+        <div style={styles.tagList}>
+          {tags.map((tag) => {
+            const isSelected = selectedTagIds.includes(tag.id);
+            return (
+              <label
+                key={tag.id}
+                style={{
+                  ...styles.tagItem,
+                  ...(isSelected ? styles.tagItemSelected : {}),
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={isSelected}
+                  onChange={() => handleToggleTag(tag.id)}
+                  style={styles.checkbox}
+                />
+                <span style={styles.hash}>#</span>
+                <span style={styles.tagName}>{tag.name}</span>
+              </label>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
 
-const styles: { [key: string]: React.CSSProperties } = {
+const getStyles = (theme: Theme, isOpen: boolean): { [key: string]: React.CSSProperties } => ({
   container: {
-    backgroundColor: '#f8f9fa',
+    backgroundColor: theme.formBg,
     padding: '15px',
     borderRadius: '8px',
     marginBottom: '20px',
+    border: `1px solid ${theme.border}`,
   },
   header: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: '10px',
+    cursor: 'pointer',
+    marginBottom: isOpen ? '15px' : '0',
+  },
+  titleWrapper: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  chevron: {
+    transform: isOpen ? 'rotate(0deg)' : 'rotate(-90deg)',
+    transition: 'transform 0.2s',
+    color: theme.subtleText,
   },
   title: {
     fontWeight: 'bold',
     fontSize: '14px',
-    color: '#495057',
+    color: theme.text,
+  },
+  countBadge: {
+    backgroundColor: theme.primary,
+    color: theme.primaryText,
+    borderRadius: '10px',
+    padding: '2px 8px',
+    fontSize: '12px',
+    fontWeight: 'bold',
   },
   clearButton: {
-    background: 'none',
-    border: 'none',
-    color: '#007bff',
+    background: theme.columnBg,
+    border: `1px solid ${theme.border}`,
+    color: theme.primary,
     cursor: 'pointer',
     fontSize: '13px',
-    padding: 0,
+    padding: '4px 10px',
+    borderRadius: '4px',
+    fontWeight: '500',
   },
   tagList: {
     display: 'flex',
@@ -120,26 +160,27 @@ const styles: { [key: string]: React.CSSProperties } = {
     cursor: 'pointer',
     padding: '6px 12px',
     borderRadius: '16px',
-    backgroundColor: '#fff',
-    border: '1px solid #dee2e6',
+    backgroundColor: theme.columnBg,
+    border: `1px solid ${theme.border}`,
     transition: 'all 0.2s',
   },
   tagItemSelected: {
-    backgroundColor: '#e3f2fd',
-    borderColor: '#1976d2',
+    backgroundColor: theme.tagBg,
+    borderColor: theme.primary,
+    color: theme.tagText,
   },
   checkbox: {
     cursor: 'pointer',
-    accentColor: '#1976d2',
+    accentColor: theme.primary,
   },
   hash: {
-    color: '#1976d2',
+    color: theme.primary,
     fontWeight: 700,
     fontSize: '14px',
   },
   tagName: {
     fontSize: '14px',
-    color: '#495057',
+    color: 'inherit',
     fontWeight: 500,
   },
-};
+});
