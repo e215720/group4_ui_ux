@@ -260,6 +260,23 @@ const getStyles = (theme: Theme, isMobile: boolean): { [key: string]: React.CSSP
     borderRadius: '4px',
     border: `1px solid ${theme.border}`,
   },
+  imagesSection: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '10px',
+    marginBottom: '15px',
+  },
+  imageLink: {
+    display: 'block',
+  },
+  questionImage: {
+    maxWidth: '300px',
+    maxHeight: '200px',
+    objectFit: 'contain',
+    borderRadius: '8px',
+    border: '1px solid #dee2e6',
+    cursor: 'pointer',
+  },
   tagsSection: {
     display: 'flex',
     alignItems: 'center',
