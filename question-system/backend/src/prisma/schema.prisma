@@ -26,20 +26,32 @@ model Lecture {
   teacher     User       @relation(fields: [teacherId], references: [id])
   teacherId   Int
   questions   Question[]
+  tags        Tag[]
   createdAt   DateTime   @default(now())
 }
 
 model Question {
-  id        Int      @id @default(autoincrement())
+  id        Int              @id @default(autoincrement())
   title     String
   content   String
-  author    User     @relation("QuestionAuthor", fields: [authorId], references: [id])
+  author    User             @relation("QuestionAuthor", fields: [authorId], references: [id])
   authorId  Int
-  lecture   Lecture  @relation(fields: [lectureId], references: [id])
+  lecture   Lecture          @relation(fields: [lectureId], references: [id])
   lectureId Int
   answers   Answer[]
-  resolved  Boolean  @default(false)
-  createdAt DateTime @default(now())
+  tags      Tag[]            @relation("QuestionTags")
+  images    QuestionImage[]
+  resolved  Boolean          @default(false)
+  createdAt DateTime         @default(now())
+}
+
+model QuestionImage {
+  id         Int      @id @default(autoincrement())
+  filename   String
+  path       String
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  questionId Int
+  createdAt  DateTime @default(now())
 }
 
 model Answer {
@@ -50,6 +62,17 @@ model Answer {
   question   Question @relation(fields: [questionId], references: [id])
   questionId Int
   createdAt  DateTime @default(now())
+}
+
+model Tag {
+  id        Int        @id @default(autoincrement())
+  name      String
+  lecture   Lecture    @relation(fields: [lectureId], references: [id], onDelete: Cascade)
+  lectureId Int
+  questions Question[] @relation("QuestionTags")
+  createdAt DateTime   @default(now())
+
+  @@unique([name, lectureId])
 }
 
 enum Role {
