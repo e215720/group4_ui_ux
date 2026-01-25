@@ -5,6 +5,7 @@ import { AnswerForm } from './AnswerForm';
 import { useTheme, Theme } from '../../contexts/ThemeContext';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { TagBadge, TagInput } from '../Tags';
+import { ImageModal } from '../common/ImageModal';
 
 interface QuestionItemProps {
   question: Question;
@@ -20,6 +21,7 @@ export function QuestionItem({ question, onUpdate, isTeacher }: QuestionItemProp
   const [isEditingTags, setIsEditingTags] = useState(false);
   const [editingTags, setEditingTags] = useState<Tag[]>([]);
   const [savingTags, setSavingTags] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   const styles = useMemo(() => getStyles(themeObject, isMobile), [themeObject, isMobile]);
 
@@ -29,6 +31,17 @@ export function QuestionItem({ question, onUpdate, isTeacher }: QuestionItemProp
     setEditingTags(question.tags || []);
     setIsEditingTags(true);
   };
+  
+  const handleImageClick = (imageUrl: string) => {
+    // Prevent opening a new tab
+    // e.preventDefault();
+    setSelectedImage(imageUrl);
+  };
+
+  const handleCloseModal = () => {
+    setSelectedImage(null);
+  };
+
 
   const handleCancelEditTags = () => {
     setIsEditingTags(false);
@@ -85,22 +98,27 @@ export function QuestionItem({ question, onUpdate, isTeacher }: QuestionItemProp
 
       {question.images && question.images.length > 0 && (
         <div style={styles.imagesSection}>
-          {question.images.map((image) => (
-            <a
-              key={image.id}
-              href={`http://localhost:4000${image.path}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={styles.imageLink}
-            >
-              <img
-                src={`http://localhost:4000${image.path}`}
-                alt=""
-                style={styles.questionImage}
-              />
-            </a>
-          ))}
+          {question.images.map((image) => {
+            const imageUrl = image.path;
+            return (
+              <div
+                key={image.id}
+                style={styles.imageLink}
+                onClick={() => handleImageClick(imageUrl)}
+              >
+                <img
+                  src={imageUrl}
+                  alt={`Question content image ${image.id}`}
+                  style={styles.questionImage}
+                />
+              </div>
+            );
+          })}
         </div>
+      )}
+
+      {selectedImage && (
+        <ImageModal src={selectedImage} onClose={handleCloseModal} />
       )}
 
       {question.tags && question.tags.length > 0 && !isEditingTags && (
@@ -246,22 +264,6 @@ const getStyles = (theme: Theme, isMobile: boolean): { [key: string]: React.CSSP
   },
   imagesSection: {
     display: 'flex',
-    gap: '10px',
-    flexWrap: 'wrap',
-    marginBottom: '15px',
-  },
-  imageLink: {
-    display: 'block',
-  },
-  questionImage: {
-    width: '100px',
-    height: '100px',
-    objectFit: 'cover',
-    borderRadius: '4px',
-    border: `1px solid ${theme.border}`,
-  },
-  imagesSection: {
-    display: 'flex',
     flexWrap: 'wrap',
     gap: '10px',
     marginBottom: '15px',
@@ -274,8 +276,12 @@ const getStyles = (theme: Theme, isMobile: boolean): { [key: string]: React.CSSP
     maxHeight: '200px',
     objectFit: 'contain',
     borderRadius: '8px',
-    border: '1px solid #dee2e6',
+    border: `1px solid ${theme.border}`,
     cursor: 'pointer',
+    transition: 'opacity 0.2s',
+    '&:hover': {
+      opacity: 0.8,
+    }
   },
   tagsSection: {
     display: 'flex',
