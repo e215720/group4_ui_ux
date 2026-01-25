@@ -51,7 +51,7 @@ export async function getQuestions(req: AuthRequest, res: Response): Promise<voi
       orderBy: { createdAt: 'desc' },
     });
 
-    // If user is a student, anonymize author names
+    // If user is a student, anonymize student author names (but show teacher names)
     const processedQuestions = questions.map((question) => ({
       ...question,
       author: userRole === 'TEACHER'
@@ -59,7 +59,8 @@ export async function getQuestions(req: AuthRequest, res: Response): Promise<voi
         : { id: question.author.id, name: '匿名', role: question.author.role },
       answers: question.answers.map((answer) => ({
         ...answer,
-        author: userRole === 'TEACHER'
+        // Teachers are always shown with their real name, students are anonymized
+        author: userRole === 'TEACHER' || answer.author.role === 'TEACHER'
           ? answer.author
           : { id: answer.author.id, name: '匿名', role: answer.author.role },
       })),
@@ -109,7 +110,7 @@ export async function getQuestion(req: AuthRequest, res: Response): Promise<void
       return;
     }
 
-    // If user is a student, anonymize author names
+    // If user is a student, anonymize student author names (but show teacher names)
     const processedQuestion = {
       ...question,
       author: userRole === 'TEACHER'
@@ -117,7 +118,8 @@ export async function getQuestion(req: AuthRequest, res: Response): Promise<void
         : { id: question.author.id, name: '匿名', role: question.author.role },
       answers: question.answers.map((answer) => ({
         ...answer,
-        author: userRole === 'TEACHER'
+        // Teachers are always shown with their real name, students are anonymized
+        author: userRole === 'TEACHER' || answer.author.role === 'TEACHER'
           ? answer.author
           : { id: answer.author.id, name: '匿名', role: answer.author.role },
       })),
