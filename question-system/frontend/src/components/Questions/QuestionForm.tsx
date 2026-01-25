@@ -21,13 +21,38 @@ export function QuestionForm({ lectureId, onQuestionCreated }: QuestionFormProps
   const [selectedTags, setSelectedTags] = useState<Tag[]>([]);
   const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<{ title?: string; content?: string }>({});
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [touched, setTouched] = useState<{ title: boolean; content: boolean }>({
+    title: false,
+    content: false,
+  });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { themeObject } = useTheme();
   const isMobile = useMediaQuery('(max-width: 768px)');
 
   const styles = useMemo(() => getStyles(themeObject, isMobile), [themeObject, isMobile]);
+
+  const validateFields = () => {
+    const errors: { title?: string; content?: string } = {};
+
+    if (!title.trim()) {
+      errors.title = 'タイトルを入力してください';
+    }
+
+    if (!content.trim()) {
+      errors.content = '内容を入力してください';
+    }
+
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleBlur = (field: 'title' | 'content') => {
+    setTouched((prev) => ({ ...prev, [field]: true }));
+    validateFields();
+  };
 
   const handleImageUpload = async (e: ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -74,6 +99,12 @@ export function QuestionForm({ lectureId, onQuestionCreated }: QuestionFormProps
       return;
     }
     setError('');
+    setTouched({ title: true, content: true });
+
+    if (!validateFields()) {
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -86,6 +117,8 @@ export function QuestionForm({ lectureId, onQuestionCreated }: QuestionFormProps
       setTitle('');
       setContent('');
       setSelectedTags([]);
+      setTouched({ title: false, content: false });
+      setFieldErrors({});
       uploadedImages.forEach((img) => URL.revokeObjectURL(img.preview));
       setUploadedImages([]);
       onQuestionCreated();
@@ -96,39 +129,56 @@ export function QuestionForm({ lectureId, onQuestionCreated }: QuestionFormProps
     }
   };
 
-  const buttonStyle = {
-    ...styles.button,
-    ...(loading || uploading ? styles.buttonDisabled : {}),
-  };
-
   return (
     <div style={styles.container}>
       <h3 style={styles.title}>新しい質問を投稿</h3>
       <form onSubmit={handleSubmit} style={styles.form}>
         {error && <div style={styles.error}>{error}</div>}
         <div style={styles.field}>
-          <label htmlFor="question-title" style={styles.label}>タイトル</label>
+          <label style={styles.label}>
+            タイトル<span style={styles.required}>*</span>
+          </label>
           <input
             id="question-title"
             type="text"
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            required
-            placeholder="質問のタイトル"
-            style={styles.input}
+            onChange={(e) => {
+              setTitle(e.target.value);
+              if (touched.title) validateFields();
+            }}
+            onBlur={() => handleBlur('title')}
+            placeholder="質問のタイトルを入力"
+            style={{
+              ...styles.input,
+              ...(touched.title && fieldErrors.title ? styles.inputError : {}),
+            }}
           />
+          {touched.title && fieldErrors.title && (
+            <span style={styles.fieldError}>{fieldErrors.title}</span>
+          )}
         </div>
         <div style={styles.field}>
-          <label htmlFor="question-content" style={styles.label}>内容</label>
+          <label style={styles.label}>
+            内容<span style={styles.required}>*</span>
+          </label>
           <textarea
             id="question-content"
             value={content}
-            onChange={(e) => setContent(e.target.value)}
-            required
-            placeholder="質問の詳細"
-            rows={5}
-            style={styles.textarea}
+            onChange={(e) => {
+              setContent(e.target.value);
+              if (touched.content) validateFields();
+            }}
+            onBlur={() => handleBlur('content')}
+            placeholder="質問の詳細を入力"
+            rows={4}
+            style={{
+              ...styles.textarea,
+              ...(touched.content && fieldErrors.content ? styles.inputError : {}),
+            }}
           />
+          {touched.content && fieldErrors.content && (
+            <span style={styles.fieldError}>{fieldErrors.content}</span>
+          )}
         </div>
         <div style={styles.field}>
           <TagInput
@@ -176,7 +226,14 @@ export function QuestionForm({ lectureId, onQuestionCreated }: QuestionFormProps
             </div>
           )}
         </div>
-        <button type="submit" disabled={loading || uploading} style={buttonStyle}>
+        <button
+          type="submit"
+          disabled={loading || uploading}
+          style={{
+            ...styles.button,
+            ...(loading || uploading ? styles.buttonDisabled : {}),
+          }}
+        >
           {loading ? '投稿中...' : '質問を投稿'}
         </button>
       </form>
@@ -208,6 +265,15 @@ const getStyles = (theme: Theme, isMobile: boolean): { [key: string]: React.CSSP
     fontWeight: 'bold',
     color: theme.text,
   },
+  required: {
+    color: '#dc3545',
+    marginLeft: '4px',
+  },
+  fieldError: {
+    color: '#dc3545',
+    fontSize: '13px',
+    marginTop: '4px',
+  },
   input: {
     padding: '12px',
     borderRadius: '5px',
@@ -225,6 +291,10 @@ const getStyles = (theme: Theme, isMobile: boolean): { [key: string]: React.CSSP
     fontSize: isMobile ? '15px' : '16px',
     resize: 'vertical',
     minHeight: '100px',
+  },
+  inputError: {
+    borderColor: '#dc3545',
+    backgroundColor: '#fff8f8',
   },
   button: {
     padding: isMobile ? '12px 20px' : '12px 24px',
@@ -304,4 +374,3 @@ const getStyles = (theme: Theme, isMobile: boolean): { [key: string]: React.CSSP
     fontWeight: 'bold',
   },
 });
-

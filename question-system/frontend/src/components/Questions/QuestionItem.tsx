@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Question, Tag, resolveQuestion, updateQuestionTags } from '../../services/api';
+import { Question, Tag, resolveQuestion, updateQuestionTags, deleteQuestion } from '../../services/api';
 import { useAuth } from '../../hooks/useAuth';
 import { AnswerForm } from './AnswerForm';
 import { useTheme, Theme } from '../../contexts/ThemeContext';
@@ -22,6 +22,7 @@ export function QuestionItem({ question, onUpdate, isTeacher }: QuestionItemProp
   const [editingTags, setEditingTags] = useState<Tag[]>([]);
   const [savingTags, setSavingTags] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const styles = useMemo(() => getStyles(themeObject, isMobile), [themeObject, isMobile]);
 
@@ -33,8 +34,6 @@ export function QuestionItem({ question, onUpdate, isTeacher }: QuestionItemProp
   };
   
   const handleImageClick = (imageUrl: string) => {
-    // Prevent opening a new tab
-    // e.preventDefault();
     setSelectedImage(imageUrl);
   };
 
@@ -69,6 +68,23 @@ export function QuestionItem({ question, onUpdate, isTeacher }: QuestionItemProp
     } catch (err) {
       console.error('Failed to resolve question:', err);
       alert('質問の解決に失敗しました。');
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm('この質問を削除しますか？削除すると元に戻せません。')) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      await deleteQuestion(question.id);
+      onUpdate();
+    } catch (err) {
+      console.error('Failed to delete question:', err);
+      alert('質問の削除に失敗しました');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -177,6 +193,15 @@ export function QuestionItem({ question, onUpdate, isTeacher }: QuestionItemProp
         {canResolve && !question.resolved && (
           <button onClick={handleResolve} style={styles.resolveButton}>
             解決済みにする
+          </button>
+        )}
+        {isAuthor && (
+          <button
+            onClick={handleDelete}
+            disabled={isDeleting}
+            style={styles.deleteButton}
+          >
+            {isDeleting ? '削除中...' : '削除'}
           </button>
         )}
       </div>
@@ -357,6 +382,14 @@ const getStyles = (theme: Theme, isMobile: boolean): { [key: string]: React.CSSP
     cursor: 'pointer',
     fontWeight: 500,
     fontSize: isMobile ? '13px' : '14px',
+  },
+  deleteButton: {
+    padding: '8px 16px',
+    backgroundColor: '#dc3545',
+    color: 'white',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer',
   },
   answersSection: {
     marginTop: '20px',

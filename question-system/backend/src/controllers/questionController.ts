@@ -51,7 +51,7 @@ export async function getQuestions(req: AuthRequest, res: Response): Promise<voi
       orderBy: { createdAt: 'desc' },
     });
 
-    // If user is a student, anonymize author names
+    // If user is a student, anonymize student author names (but show teacher names)
     const processedQuestions = questions.map((question) => ({
       ...question,
       author: userRole === 'TEACHER'
@@ -59,7 +59,8 @@ export async function getQuestions(req: AuthRequest, res: Response): Promise<voi
         : { id: question.author.id, name: '匿名', role: question.author.role },
       answers: question.answers.map((answer) => ({
         ...answer,
-        author: userRole === 'TEACHER'
+        // Teachers are always shown with their real name, students are anonymized
+        author: userRole === 'TEACHER' || answer.author.role === 'TEACHER'
           ? answer.author
           : { id: answer.author.id, name: '匿名', role: answer.author.role },
       })),
@@ -109,7 +110,7 @@ export async function getQuestion(req: AuthRequest, res: Response): Promise<void
       return;
     }
 
-    // If user is a student, anonymize author names
+    // If user is a student, anonymize student author names (but show teacher names)
     const processedQuestion = {
       ...question,
       author: userRole === 'TEACHER'
@@ -117,7 +118,8 @@ export async function getQuestion(req: AuthRequest, res: Response): Promise<void
         : { id: question.author.id, name: '匿名', role: question.author.role },
       answers: question.answers.map((answer) => ({
         ...answer,
-        author: userRole === 'TEACHER'
+        // Teachers are always shown with their real name, students are anonymized
+        author: userRole === 'TEACHER' || answer.author.role === 'TEACHER'
           ? answer.author
           : { id: answer.author.id, name: '匿名', role: answer.author.role },
       })),
@@ -263,6 +265,42 @@ export async function addAnswer(req: AuthRequest, res: Response): Promise<void> 
   } catch (error) {
     console.error('Add answer error:', error);
     res.status(500).json({ error: '回答の追加に失敗しました' });
+  }
+}
+
+export async function deleteQuestion(req: AuthRequest, res: Response): Promise<void> {
+  const prisma: PrismaClient = req.app.get('prisma');
+  const { id } = req.params;
+  const userId = req.user?.id;
+
+  if (!userId) {
+    res.status(401).json({ error: '認証が必要です' });
+    return;
+  }
+
+  try {
+    const question = await prisma.question.findUnique({
+      where: { id: parseInt(id) },
+    });
+
+    if (!question) {
+      res.status(404).json({ error: '質問が見つかりません' });
+      return;
+    }
+
+    if (question.authorId !== userId) {
+      res.status(403).json({ error: '削除権限がありません' });
+      return;
+    }
+
+    await prisma.question.delete({
+      where: { id: parseInt(id) },
+    });
+
+    res.json({ message: '質問を削除しました' });
+  } catch (error) {
+    console.error('Delete question error:', error);
+    res.status(500).json({ error: '質問の削除に失敗しました' });
   }
 }
 

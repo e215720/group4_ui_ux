@@ -239,6 +239,14 @@ export async function resolveQuestion(id: number): Promise<{ question: Question 
   return handleResponse<{ question: Question }>(response);
 }
 
+export async function deleteQuestion(id: number): Promise<{ message: string }> {
+  const response = await fetch(`${API_BASE}/questions/${id}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+  return handleResponse<{ message: string }>(response);
+}
+
 export async function addAnswer(
   questionId: number,
   content: string

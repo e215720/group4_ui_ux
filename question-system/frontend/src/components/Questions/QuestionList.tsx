@@ -1,9 +1,11 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Question, Lecture, getQuestions } from '../../services/api';
 import { QuestionItem } from './QuestionItem';
 import { useTheme, Theme } from '../../contexts/ThemeContext';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { TagFilter } from '../Tags';
+
+const POLLING_INTERVAL = 5000; // 5秒ごとに更新
 
 interface QuestionListProps {
   lecture: Lecture | null;
@@ -17,32 +19,72 @@ export function QuestionList({ lecture, isTeacher }: QuestionListProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const isMountedRef = useRef(true);
 
   const styles = useMemo(() => getStyles(themeObject, isMobile), [themeObject, isMobile]);
 
-  const fetchQuestions = useCallback(async () => {
+  const fetchQuestions = useCallback(async (showLoading = true) => {
     if (!lecture) return;
 
-    setLoading(true);
+    if (showLoading) {
+      setLoading(true);
+    }
     try {
       const { questions } = await getQuestions(
         lecture.id,
         selectedTagIds.length > 0 ? selectedTagIds : undefined
       );
-      setQuestions(questions);
-      setError('');
+      if (isMountedRef.current) {
+        setQuestions(questions);
+        setLastUpdated(new Date());
+        setError('');
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : '質問の取得に失敗しました');
+      if (isMountedRef.current) {
+        setError(err instanceof Error ? err.message : '質問の取得に失敗しました');
+      }
     } finally {
-      setLoading(false);
+      if (isMountedRef.current && showLoading) {
+        setLoading(false);
+      }
     }
   }, [lecture, selectedTagIds]);
 
+  // 初回読み込み
   useEffect(() => {
     if (lecture) {
-      fetchQuestions();
+      fetchQuestions(true);
     }
   }, [lecture, fetchQuestions]);
+
+  // 自動更新（ポーリング）
+  useEffect(() => {
+    if (!autoRefresh || !lecture) return;
+
+    const intervalId = setInterval(() => {
+      fetchQuestions(false); // サイレント更新（ローディング表示なし）
+    }, POLLING_INTERVAL);
+
+    return () => clearInterval(intervalId);
+  }, [autoRefresh, fetchQuestions, lecture]);
+
+  // コンポーネントのアンマウント時にフラグを更新
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  const handleTagFilterChange = (tagIds: number[]) => {
+    setSelectedTagIds(tagIds);
+  };
+
+  const formatLastUpdated = (date: Date) => {
+    return date.toLocaleTimeString('ja-JP');
+  };
   
   if (!lecture) {
     return (
@@ -53,10 +95,6 @@ export function QuestionList({ lecture, isTeacher }: QuestionListProps) {
       </div>
     );
   }
-
-  const handleTagFilterChange = (tagIds: number[]) => {
-    setSelectedTagIds(tagIds);
-  };
 
   if (loading) {
     return <div style={styles.loading}>読み込み中...</div>;
@@ -72,7 +110,32 @@ export function QuestionList({ lecture, isTeacher }: QuestionListProps) {
         onChange={handleTagFilterChange}
       />
 
-      <h3 style={styles.title}>質問一覧</h3>
+      <div style={styles.listHeader}>
+        <h3 style={styles.title}>質問一覧</h3>
+        <div style={styles.refreshControls}>
+          <label style={styles.autoRefreshLabel}>
+            <input
+              type="checkbox"
+              checked={autoRefresh}
+              onChange={(e) => setAutoRefresh(e.target.checked)}
+              style={styles.checkbox}
+            />
+            自動更新
+          </label>
+          {lastUpdated && (
+            <span style={styles.lastUpdated}>
+              最終更新: {formatLastUpdated(lastUpdated)}
+            </span>
+          )}
+          <button
+            onClick={() => fetchQuestions(false)}
+            style={styles.refreshButton}
+            title="今すぐ更新"
+          >
+            ↻
+          </button>
+        </div>
+      </div>
 
       {questions.length === 0 ? (
         <div style={styles.noQuestions}>
@@ -87,7 +150,7 @@ export function QuestionList({ lecture, isTeacher }: QuestionListProps) {
             <QuestionItem
               key={question.id}
               question={question}
-              onUpdate={fetchQuestions}
+              onUpdate={() => fetchQuestions(false)}
               isTeacher={isTeacher}
             />
           ))}
@@ -113,11 +176,48 @@ const getStyles = (theme: Theme, isMobile: boolean): { [key: string]: React.CSSP
     backgroundColor: theme.formBg,
     borderRadius: '8px',
   },
-  title: {
-    marginTop: '20px',
+  listHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: '20px',
+    flexWrap: 'wrap',
+    gap: '10px',
+  },
+  title: {
+    margin: 0,
     fontSize: '22px',
     color: theme.text,
+  },
+  refreshControls: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '15px',
+    fontSize: '14px',
+  },
+  autoRefreshLabel: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    cursor: 'pointer',
+    color: theme.subtleText,
+  },
+  checkbox: {
+    cursor: 'pointer',
+  },
+  lastUpdated: {
+    color: theme.subtleText,
+    fontSize: '13px',
+  },
+  refreshButton: {
+    padding: '4px 10px',
+    backgroundColor: theme.primary,
+    color: 'white',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    fontSize: '16px',
+    lineHeight: 1,
   },
   loading: {
     textAlign: 'center',
