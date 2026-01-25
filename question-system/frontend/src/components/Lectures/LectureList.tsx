@@ -185,8 +185,8 @@ const getStyles = (theme: Theme, isMobile: boolean): { [key: string]: React.CSSP
     marginTop: '15px',
   },
   teacherName: {
-    backgroundColor: theme.primary,
-    color: theme.primaryText,
+    backgroundColor: theme.teacherBadgeBg,
+    color: theme.teacherBadgeText,
     fontWeight: 'bold',
     padding: '4px 8px',
     borderRadius: '12px',

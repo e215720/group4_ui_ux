@@ -6,7 +6,7 @@ export const lightTheme = {
   headerColor: '#212529',
   columnBg: '#f8f9fa',
   formBg: '#FFFFFF',
-  border: '#dee2e6',
+  border: '#ced4da',
   hoverBorder: '#ced4da',
   inputBg: '#FFFFFF',
   inputBorder: '#ced4da',
@@ -26,6 +26,10 @@ export const lightTheme = {
   badgeUnresolvedBg: '#fff3cd',
   badgeUnresolvedText: '#664d03',
   answerBg: '#e9ecef',
+  tagBg: '#e3f2fd',
+  tagText: '#1565c0',
+  teacherBadgeBg: '#6c757d',
+  teacherBadgeText: '#FFFFFF',
 };
 
 export const darkTheme = {
@@ -36,8 +40,8 @@ export const darkTheme = {
   headerColor: '#f5f5f7',
   columnBg: '#2c2c2e',
   formBg: '#2c2c2e',
-  border: '#3a3a3c',
-  hoverBorder: '#545458',
+  border: '#636366',
+  hoverBorder: '#7d7d80',
   inputBg: '#3a3a3c',
   inputBorder: '#545458',
 
@@ -56,6 +60,10 @@ export const darkTheme = {
   badgeUnresolvedBg: '#4f4223',
   badgeUnresolvedText: '#ffd60a',
   answerBg: '#3a3a3c',
+  tagBg: '#192c48',
+  tagText: '#52a6ff',
+  teacherBadgeBg: '#545458',
+  teacherBadgeText: '#f5f5f7',
 };
 
 export type Theme = typeof lightTheme;
