@@ -33,6 +33,11 @@ function App() {
 
   const handleLogout = () => {
     logout();
+    // Reset application state on logout
+    setSelectedLecture(null);
+    setIsLeftbarOpen(true);
+    setIsFormVisible(false);
+    setRefreshKey(0);
     setShowLogin(true);
   };
 
