@@ -293,8 +293,8 @@ const getStyles = (theme: Theme, isMobile: boolean): { [key: string]: React.CSSP
     minHeight: '100px',
   },
   inputError: {
-    borderColor: '#dc3545',
-    backgroundColor: '#fff8f8',
+    borderColor: theme.danger,
+    backgroundColor: theme.inputBg,
   },
   button: {
     padding: isMobile ? '12px 20px' : '12px 24px',
