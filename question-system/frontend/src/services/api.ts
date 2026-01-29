@@ -5,6 +5,8 @@ interface User {
   email: string;
   name: string;
   role: 'TEACHER' | 'STUDENT';
+  nickname?: string | null;
+  showNickname?: boolean;
 }
 
 interface Author {
@@ -86,12 +88,14 @@ export async function register(
   email: string,
   password: string,
   name: string,
-  role: string
+  role: string,
+  nickname?: string,
+  showNickname?: boolean
 ): Promise<AuthResponse> {
   const response = await fetch(`${API_BASE}/auth/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password, name, role }),
+    body: JSON.stringify({ email, password, name, role, nickname, showNickname }),
   });
   return handleResponse<AuthResponse>(response);
 }
@@ -108,6 +112,18 @@ export async function login(email: string, password: string): Promise<AuthRespon
 export async function getMe(): Promise<{ user: User }> {
   const response = await fetch(`${API_BASE}/auth/me`, {
     headers: getAuthHeaders(),
+  });
+  return handleResponse<{ user: User }>(response);
+}
+
+export async function updateProfile(
+  nickname?: string,
+  showNickname?: boolean
+): Promise<{ user: User }> {
+  const response = await fetch(`${API_BASE}/auth/profile`, {
+    method: 'PUT',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ nickname, showNickname }),
   });
   return handleResponse<{ user: User }>(response);
 }
@@ -209,12 +225,13 @@ export async function createQuestion(
   content: string,
   lectureId: number,
   tagIds?: number[],
-  images?: { filename: string; path: string }[]
+  images?: { filename: string; path: string }[],
+  showNickname?: boolean
 ): Promise<{ question: Question }> {
   const response = await fetch(`${API_BASE}/questions`, {
     method: 'POST',
     headers: getAuthHeaders(),
-    body: JSON.stringify({ title, content, lectureId, tagIds, images }),
+    body: JSON.stringify({ title, content, lectureId, tagIds, images, showNickname }),
   });
   return handleResponse<{ question: Question }>(response);
 }

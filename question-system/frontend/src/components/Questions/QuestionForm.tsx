@@ -2,6 +2,7 @@ import { useState, FormEvent, useMemo, ChangeEvent, useRef } from 'react';
 import { createQuestion, uploadImage, Tag } from '../../services/api';
 import { useTheme, Theme } from '../../contexts/ThemeContext';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
+import { useAuth } from '../../hooks/useAuth';
 import { TagInput } from '../Tags';
 
 interface UploadedImage {
@@ -16,10 +17,12 @@ interface QuestionFormProps {
 }
 
 export function QuestionForm({ lectureId, onQuestionCreated }: QuestionFormProps) {
+  const { user } = useAuth();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [selectedTags, setSelectedTags] = useState<Tag[]>([]);
   const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);
+  const [showNickname, setShowNickname] = useState(user?.showNickname || false);
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<{ title?: string; content?: string }>({});
   const [loading, setLoading] = useState(false);
@@ -31,6 +34,8 @@ export function QuestionForm({ lectureId, onQuestionCreated }: QuestionFormProps
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { themeObject } = useTheme();
   const isMobile = useMediaQuery('(max-width: 768px)');
+
+  const hasNickname = !!(user?.nickname);
 
   const styles = useMemo(() => getStyles(themeObject, isMobile), [themeObject, isMobile]);
 
@@ -113,10 +118,11 @@ export function QuestionForm({ lectureId, onQuestionCreated }: QuestionFormProps
         filename: img.filename,
         path: img.path,
       }));
-      await createQuestion(title, content, lectureId, tagIds, images);
+      await createQuestion(title, content, lectureId, tagIds, images, showNickname);
       setTitle('');
       setContent('');
       setSelectedTags([]);
+      setShowNickname(user?.showNickname || false);
       setTouched({ title: false, content: false });
       setFieldErrors({});
       uploadedImages.forEach((img) => URL.revokeObjectURL(img.preview));
@@ -225,6 +231,25 @@ export function QuestionForm({ lectureId, onQuestionCreated }: QuestionFormProps
               ))}
             </div>
           )}
+        </div>
+        <div style={styles.checkboxField}>
+          <label style={styles.checkboxLabel}>
+            <input
+              type="checkbox"
+              checked={showNickname}
+              onChange={(e) => setShowNickname(e.target.checked)}
+              style={styles.checkbox}
+              disabled={!hasNickname}
+            />
+            <span>ニックネームを表示する</span>
+          </label>
+          <p style={styles.hint}>
+            {hasNickname
+              ? showNickname
+                ? `投稿者名: ${user?.nickname}`
+                : '投稿者名: 匿名'
+              : 'ニックネーム未設定（プロフィール設定から登録できます）'}
+          </p>
         </div>
         <button
           type="submit"
@@ -372,5 +397,27 @@ const getStyles = (theme: Theme, isMobile: boolean): { [key: string]: React.CSSP
     justifyContent: 'center',
     fontSize: '14px',
     fontWeight: 'bold',
+  },
+  checkboxField: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+  },
+  checkboxLabel: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    color: theme.text,
+    cursor: 'pointer',
+  },
+  checkbox: {
+    width: '18px',
+    height: '18px',
+    cursor: 'pointer',
+  },
+  hint: {
+    margin: 0,
+    fontSize: '14px',
+    color: theme.subtleText,
   },
 });
