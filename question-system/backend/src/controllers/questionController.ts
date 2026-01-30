@@ -222,6 +222,23 @@ export async function resolveQuestion(req: AuthRequest, res: Response): Promise<
   }
 }
 
+export async function unresolveQuestion(req: AuthRequest, res: Response): Promise<void> {
+  const prisma: PrismaClient = req.app.get('prisma');
+  const { id } = req.params;
+
+  try {
+    const question = await prisma.question.update({
+      where: { id: parseInt(id) },
+      data: { resolved: false },
+    });
+
+    res.json({ question });
+  } catch (error) {
+    console.error('Unresolve question error:', error);
+    res.status(500).json({ error: '質問の更新に失敗しました' });
+  }
+}
+
 export async function addAnswer(req: AuthRequest, res: Response): Promise<void> {
   const prisma: PrismaClient = req.app.get('prisma');
   const { id } = req.params;

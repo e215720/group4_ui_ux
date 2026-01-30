@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Question, Tag, resolveQuestion, updateQuestionTags, deleteQuestion } from '../../services/api';
+import { Question, Tag, resolveQuestion, unresolveQuestion, updateQuestionTags, deleteQuestion } from '../../services/api';
 import { useAuth } from '../../hooks/useAuth';
 import { AnswerForm } from './AnswerForm';
 import { useTheme, Theme } from '../../contexts/ThemeContext';
@@ -68,6 +68,17 @@ export function QuestionItem({ question, onUpdate, isTeacher }: QuestionItemProp
     } catch (err) {
       console.error('Failed to resolve question:', err);
       alert('質問の解決に失敗しました。');
+    }
+  };
+
+  const handleUnresolve = async () => {
+    if (!window.confirm('この質問を「未解決」に戻しますか？')) return;
+    try {
+      await unresolveQuestion(question.id);
+      onUpdate();
+    } catch (err) {
+      console.error('Failed to unresolve question:', err);
+      alert('質問の状態変更に失敗しました。');
     }
   };
 
@@ -193,6 +204,11 @@ export function QuestionItem({ question, onUpdate, isTeacher }: QuestionItemProp
         {canResolve && !question.resolved && (
           <button onClick={handleResolve} style={styles.resolveButton}>
             解決済みにする
+          </button>
+        )}
+        {canResolve && question.resolved && (
+          <button onClick={handleUnresolve} style={styles.unresolveButton}>
+            未解決に戻す
           </button>
         )}
         {isAuthor && (
@@ -377,6 +393,16 @@ const getStyles = (theme: Theme, isMobile: boolean): { [key: string]: React.CSSP
     padding: '8px 16px',
     backgroundColor: theme.success,
     color: theme.successText,
+    border: 'none',
+    borderRadius: '5px',
+    cursor: 'pointer',
+    fontWeight: 500,
+    fontSize: isMobile ? '13px' : '14px',
+  },
+  unresolveButton: {
+    padding: '8px 16px',
+    backgroundColor: '#6c757d',
+    color: 'white',
     border: 'none',
     borderRadius: '5px',
     cursor: 'pointer',

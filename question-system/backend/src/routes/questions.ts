@@ -5,6 +5,7 @@ import {
   createQuestion,
   deleteQuestion,
   resolveQuestion,
+  unresolveQuestion,
   addAnswer,
   updateQuestionTags,
 } from '../controllers/questionController';
@@ -17,6 +18,7 @@ router.post('/', authenticateToken, createQuestion);
 router.get('/:id', authenticateToken, getQuestion);
 router.delete('/:id', authenticateToken, deleteQuestion);
 router.put('/:id/resolve', authenticateToken, resolveQuestion);
+router.put('/:id/unresolve', authenticateToken, unresolveQuestion);
 router.put('/:id/tags', authenticateToken, updateQuestionTags);
 router.post('/:id/answers', authenticateToken, addAnswer);
 
