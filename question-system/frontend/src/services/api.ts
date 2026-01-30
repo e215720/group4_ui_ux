@@ -13,11 +13,18 @@ interface Author {
   role: 'TEACHER' | 'STUDENT';
 }
 
+interface AnswerImage {
+  id: number;
+  filename: string;
+  path: string;
+}
+
 interface Answer {
   id: number;
   content: string;
   author: Author;
   questionId: number;
+  images?: AnswerImage[];
   createdAt: string;
 }
 
@@ -181,13 +188,20 @@ export async function uploadImage(file: File): Promise<{ image: { filename: stri
 }
 
 // Questions API
-export async function getQuestions(lectureId?: number, tagIds?: number[]): Promise<{ questions: Question[] }> {
+export async function getQuestions(
+  lectureId?: number,
+  tagIds?: number[],
+  resolved?: boolean | null
+): Promise<{ questions: Question[] }> {
   const params = new URLSearchParams();
   if (lectureId) {
     params.append('lectureId', lectureId.toString());
   }
   if (tagIds && tagIds.length > 0) {
     params.append('tags', tagIds.join(','));
+  }
+  if (resolved !== undefined && resolved !== null) {
+    params.append('resolved', resolved.toString());
   }
   const queryString = params.toString();
   const url = queryString ? `${API_BASE}/questions?${queryString}` : `${API_BASE}/questions`;
@@ -239,6 +253,14 @@ export async function resolveQuestion(id: number): Promise<{ question: Question 
   return handleResponse<{ question: Question }>(response);
 }
 
+export async function unresolveQuestion(id: number): Promise<{ question: Question }> {
+  const response = await fetch(`${API_BASE}/questions/${id}/unresolve`, {
+    method: 'PUT',
+    headers: getAuthHeaders(),
+  });
+  return handleResponse<{ question: Question }>(response);
+}
+
 export async function deleteQuestion(id: number): Promise<{ message: string }> {
   const response = await fetch(`${API_BASE}/questions/${id}`, {
     method: 'DELETE',
@@ -249,14 +271,15 @@ export async function deleteQuestion(id: number): Promise<{ message: string }> {
 
 export async function addAnswer(
   questionId: number,
-  content: string
+  content: string,
+  images?: { filename: string; path: string }[]
 ): Promise<{ answer: Answer }> {
   const response = await fetch(`${API_BASE}/questions/${questionId}/answers`, {
     method: 'POST',
     headers: getAuthHeaders(),
-    body: JSON.stringify({ content }),
+    body: JSON.stringify({ content, images }),
   });
   return handleResponse<{ answer: Answer }>(response);
 }
 
-export type { User, Question, Answer, Author, Lecture, Tag, QuestionImage };
+export type { User, Question, Answer, Author, Lecture, Tag, QuestionImage, AnswerImage };

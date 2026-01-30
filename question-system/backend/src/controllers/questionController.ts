@@ -9,11 +9,13 @@ export async function getQuestions(req: AuthRequest, res: Response): Promise<voi
   const tagIds = req.query.tags
     ? (req.query.tags as string).split(',').map((id) => parseInt(id))
     : undefined;
+  const resolvedFilter = req.query.resolved as string | undefined;
 
   try {
     const whereClause: {
       lectureId?: number;
       tags?: { some: { id: { in: number[] } } };
+      resolved?: boolean;
     } = {};
 
     if (lectureId) {
@@ -22,6 +24,12 @@ export async function getQuestions(req: AuthRequest, res: Response): Promise<voi
 
     if (tagIds && tagIds.length > 0) {
       whereClause.tags = { some: { id: { in: tagIds } } };
+    }
+
+    if (resolvedFilter === 'true') {
+      whereClause.resolved = true;
+    } else if (resolvedFilter === 'false') {
+      whereClause.resolved = false;
     }
 
     const questions = await prisma.question.findMany({
@@ -43,6 +51,9 @@ export async function getQuestions(req: AuthRequest, res: Response): Promise<voi
           include: {
             author: {
               select: { id: true, name: true, role: true },
+            },
+            images: {
+              select: { id: true, filename: true, path: true },
             },
           },
           orderBy: { createdAt: 'asc' },
@@ -98,6 +109,9 @@ export async function getQuestion(req: AuthRequest, res: Response): Promise<void
           include: {
             author: {
               select: { id: true, name: true, role: true },
+            },
+            images: {
+              select: { id: true, filename: true, path: true },
             },
           },
           orderBy: { createdAt: 'asc' },
@@ -222,10 +236,27 @@ export async function resolveQuestion(req: AuthRequest, res: Response): Promise<
   }
 }
 
+export async function unresolveQuestion(req: AuthRequest, res: Response): Promise<void> {
+  const prisma: PrismaClient = req.app.get('prisma');
+  const { id } = req.params;
+
+  try {
+    const question = await prisma.question.update({
+      where: { id: parseInt(id) },
+      data: { resolved: false },
+    });
+
+    res.json({ question });
+  } catch (error) {
+    console.error('Unresolve question error:', error);
+    res.status(500).json({ error: '質問の更新に失敗しました' });
+  }
+}
+
 export async function addAnswer(req: AuthRequest, res: Response): Promise<void> {
   const prisma: PrismaClient = req.app.get('prisma');
   const { id } = req.params;
-  const { content } = req.body;
+  const { content, images } = req.body;
   const userId = req.user?.id;
 
   if (!userId) {
@@ -253,10 +284,23 @@ export async function addAnswer(req: AuthRequest, res: Response): Promise<void> 
         content,
         authorId: userId,
         questionId: parseInt(id),
+        ...(images && images.length > 0
+          ? {
+              images: {
+                create: images.map((img: { filename: string; path: string }) => ({
+                  filename: img.filename,
+                  path: img.path,
+                })),
+              },
+            }
+          : {}),
       },
       include: {
         author: {
           select: { id: true, name: true, role: true },
+        },
+        images: {
+          select: { id: true, filename: true, path: true },
         },
       },
     });

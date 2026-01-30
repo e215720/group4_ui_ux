@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Question, Tag, resolveQuestion, updateQuestionTags, deleteQuestion } from '../../services/api';
+import { Question, Tag, resolveQuestion, unresolveQuestion, updateQuestionTags, deleteQuestion } from '../../services/api';
 import { useAuth } from '../../hooks/useAuth';
 import { AnswerForm } from './AnswerForm';
 import { useTheme, Theme } from '../../contexts/ThemeContext';
@@ -18,7 +18,7 @@ export function QuestionItem({ question, onUpdate, isTeacher, onTagClick }: Ques
   const { user } = useAuth();
   const { themeObject } = useTheme();
   const isMobile = useMediaQuery('(max-width: 768px)');
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(true);
   const [isEditingTags, setIsEditingTags] = useState(false);
   const [editingTags, setEditingTags] = useState<Tag[]>([]);
   const [savingTags, setSavingTags] = useState(false);
@@ -69,6 +69,17 @@ export function QuestionItem({ question, onUpdate, isTeacher, onTagClick }: Ques
     } catch (err) {
       console.error('Failed to resolve question:', err);
       alert('質問の解決に失敗しました。');
+    }
+  };
+
+  const handleUnresolve = async () => {
+    if (!window.confirm('この質問を「未解決」に戻しますか？')) return;
+    try {
+      await unresolveQuestion(question.id);
+      onUpdate();
+    } catch (err) {
+      console.error('Failed to unresolve question:', err);
+      alert('質問の状態変更に失敗しました。');
     }
   };
 
@@ -196,6 +207,11 @@ export function QuestionItem({ question, onUpdate, isTeacher, onTagClick }: Ques
             解決済みにする
           </button>
         )}
+        {canResolve && question.resolved && (
+          <button onClick={handleUnresolve} style={styles.unresolveButton}>
+            未解決に戻す
+          </button>
+        )}
         {isAuthor && (
           <button
             onClick={handleDelete}
@@ -222,6 +238,23 @@ export function QuestionItem({ question, onUpdate, isTeacher, onTagClick }: Ques
                   <span style={styles.answerDate}>{formatDate(answer.createdAt)}</span>
                 </div>
                 <p style={styles.answerContent}>{answer.content}</p>
+                {answer.images && answer.images.length > 0 && (
+                  <div style={styles.answerImagesSection}>
+                    {answer.images.map((image) => (
+                      <div
+                        key={image.id}
+                        style={styles.imageLink}
+                        onClick={() => handleImageClick(image.path)}
+                      >
+                        <img
+                          src={image.path}
+                          alt={`Answer image ${image.id}`}
+                          style={styles.answerImage}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             ))
           )}
@@ -384,6 +417,16 @@ const getStyles = (theme: Theme, isMobile: boolean): { [key: string]: React.CSSP
     fontWeight: 500,
     fontSize: isMobile ? '13px' : '14px',
   },
+  unresolveButton: {
+    padding: '8px 16px',
+    backgroundColor: '#6c757d',
+    color: 'white',
+    border: 'none',
+    borderRadius: '5px',
+    cursor: 'pointer',
+    fontWeight: 500,
+    fontSize: isMobile ? '13px' : '14px',
+  },
   deleteButton: {
     padding: '8px 16px',
     backgroundColor: '#dc3545',
@@ -434,5 +477,19 @@ const getStyles = (theme: Theme, isMobile: boolean): { [key: string]: React.CSSP
     lineHeight: 1.5,
     color: theme.text,
     wordBreak: 'break-word',
+  },
+  answerImagesSection: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '8px',
+    marginTop: '10px',
+  },
+  answerImage: {
+    maxWidth: '200px',
+    maxHeight: '150px',
+    objectFit: 'contain',
+    borderRadius: '6px',
+    border: `1px solid ${theme.border}`,
+    cursor: 'pointer',
   },
 });

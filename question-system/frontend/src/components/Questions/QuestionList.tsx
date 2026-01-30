@@ -19,6 +19,7 @@ export function QuestionList({ lecture, isTeacher }: QuestionListProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
+  const [resolvedFilter, setResolvedFilter] = useState<'all' | 'resolved' | 'unresolved'>('all');
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
@@ -33,9 +34,11 @@ export function QuestionList({ lecture, isTeacher }: QuestionListProps) {
       setLoading(true);
     }
     try {
+      const resolvedParam = resolvedFilter === 'resolved' ? true : resolvedFilter === 'unresolved' ? false : null;
       const { questions } = await getQuestions(
         lecture.id,
-        selectedTagIds.length > 0 ? selectedTagIds : undefined
+        selectedTagIds.length > 0 ? selectedTagIds : undefined,
+        resolvedParam
       );
       if (isMountedRef.current) {
         setQuestions(questions);
@@ -51,7 +54,7 @@ export function QuestionList({ lecture, isTeacher }: QuestionListProps) {
         setLoading(false);
       }
     }
-  }, [lecture, selectedTagIds]);
+  }, [lecture, selectedTagIds, resolvedFilter]);
 
   // 初回読み込み
   useEffect(() => {
@@ -124,11 +127,25 @@ export function QuestionList({ lecture, isTeacher }: QuestionListProps) {
     <div style={styles.container}>
       {error && <div style={styles.error}>{error}</div>}
 
-      <TagFilter
-        lectureId={lecture.id}
-        selectedTagIds={selectedTagIds}
-        onChange={handleTagFilterChange}
-      />
+      <div style={styles.filterSection}>
+        <TagFilter
+          lectureId={lecture.id}
+          selectedTagIds={selectedTagIds}
+          onChange={handleTagFilterChange}
+        />
+        <div style={styles.statusFilter}>
+          <label style={styles.filterLabel}>状態:</label>
+          <select
+            value={resolvedFilter}
+            onChange={(e) => setResolvedFilter(e.target.value as 'all' | 'resolved' | 'unresolved')}
+            style={styles.filterSelect}
+          >
+            <option value="all">すべて</option>
+            <option value="unresolved">未解決</option>
+            <option value="resolved">解決済み</option>
+          </select>
+        </div>
+      </div>
 
       <div style={styles.listHeader}>
         <h3 style={styles.title}>質問一覧</h3>
@@ -207,6 +224,33 @@ const getStyles = (theme: Theme, isMobile: boolean): { [key: string]: React.CSSP
     textAlign: 'center',
     backgroundColor: theme.formBg,
     borderRadius: '8px',
+  },
+  filterSection: {
+    display: 'flex',
+    flexDirection: isMobile ? 'column' : 'row',
+    gap: '15px',
+    marginBottom: '15px',
+    alignItems: isMobile ? 'stretch' : 'center',
+    flexWrap: 'wrap',
+  },
+  statusFilter: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  filterLabel: {
+    color: theme.text,
+    fontSize: '14px',
+    fontWeight: 500,
+  },
+  filterSelect: {
+    padding: '8px 12px',
+    borderRadius: '5px',
+    border: `1px solid ${theme.border}`,
+    backgroundColor: theme.inputBg,
+    color: theme.text,
+    fontSize: '14px',
+    cursor: 'pointer',
   },
   listHeader: {
     display: 'flex',
