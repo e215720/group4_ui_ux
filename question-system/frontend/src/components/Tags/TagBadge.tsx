@@ -5,20 +5,36 @@ import { useTheme, Theme } from '../../contexts/ThemeContext';
 interface TagBadgeProps {
   tag: Tag;
   onRemove?: () => void;
+  onClick?: () => void;
 }
 
-export function TagBadge({ tag, onRemove }: TagBadgeProps) {
+export function TagBadge({ tag, onRemove, onClick }: TagBadgeProps) {
   const { themeObject } = useTheme();
   const styles = useMemo(() => getStyles(themeObject), [themeObject]);
 
   return (
-    <span style={styles.badge}>
+    <span
+      style={{ ...styles.badge, ...(onClick ? styles.badgeClickable : {}) }}
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={(event) => {
+        if (!onClick) return;
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onClick();
+        }
+      }}
+    >
       <span style={styles.hash}>#</span>
       {tag.name}
       {onRemove && (
         <button
           type="button"
-          onClick={onRemove}
+          onClick={(event) => {
+            event.stopPropagation();
+            onRemove();
+          }}
           style={styles.removeButton}
           aria-label={`${tag.name}を削除`}
         >
@@ -40,6 +56,9 @@ const getStyles = (theme: Theme): { [key: string]: React.CSSProperties } => ({
     borderRadius: '14px',
     fontSize: '13px',
     fontWeight: 600,
+  },
+  badgeClickable: {
+    cursor: 'pointer',
   },
   hash: {
     color: theme.primary,

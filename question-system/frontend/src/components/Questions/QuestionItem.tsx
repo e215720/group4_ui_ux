@@ -11,9 +11,10 @@ interface QuestionItemProps {
   question: Question;
   onUpdate: () => void;
   isTeacher?: boolean;
+  onTagClick?: (tag: Tag) => void;
 }
 
-export function QuestionItem({ question, onUpdate, isTeacher }: QuestionItemProps) {
+export function QuestionItem({ question, onUpdate, isTeacher, onTagClick }: QuestionItemProps) {
   const { user } = useAuth();
   const { themeObject } = useTheme();
   const isMobile = useMediaQuery('(max-width: 768px)');
@@ -141,7 +142,7 @@ export function QuestionItem({ question, onUpdate, isTeacher }: QuestionItemProp
         <div style={styles.tagsSection}>
           <div style={styles.tagsList}>
             {question.tags.map((tag) => (
-              <TagBadge key={tag.id} tag={tag} />
+              <TagBadge key={tag.id} tag={tag} onClick={() => onTagClick?.(tag)} />
             ))}
           </div>
           {isAuthor && (
