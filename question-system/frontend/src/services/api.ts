@@ -181,13 +181,20 @@ export async function uploadImage(file: File): Promise<{ image: { filename: stri
 }
 
 // Questions API
-export async function getQuestions(lectureId?: number, tagIds?: number[]): Promise<{ questions: Question[] }> {
+export async function getQuestions(
+  lectureId?: number,
+  tagIds?: number[],
+  resolved?: boolean | null
+): Promise<{ questions: Question[] }> {
   const params = new URLSearchParams();
   if (lectureId) {
     params.append('lectureId', lectureId.toString());
   }
   if (tagIds && tagIds.length > 0) {
     params.append('tags', tagIds.join(','));
+  }
+  if (resolved !== undefined && resolved !== null) {
+    params.append('resolved', resolved.toString());
   }
   const queryString = params.toString();
   const url = queryString ? `${API_BASE}/questions?${queryString}` : `${API_BASE}/questions`;

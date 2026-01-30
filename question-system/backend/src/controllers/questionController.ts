@@ -9,11 +9,13 @@ export async function getQuestions(req: AuthRequest, res: Response): Promise<voi
   const tagIds = req.query.tags
     ? (req.query.tags as string).split(',').map((id) => parseInt(id))
     : undefined;
+  const resolvedFilter = req.query.resolved as string | undefined;
 
   try {
     const whereClause: {
       lectureId?: number;
       tags?: { some: { id: { in: number[] } } };
+      resolved?: boolean;
     } = {};
 
     if (lectureId) {
@@ -22,6 +24,12 @@ export async function getQuestions(req: AuthRequest, res: Response): Promise<voi
 
     if (tagIds && tagIds.length > 0) {
       whereClause.tags = { some: { id: { in: tagIds } } };
+    }
+
+    if (resolvedFilter === 'true') {
+      whereClause.resolved = true;
+    } else if (resolvedFilter === 'false') {
+      whereClause.resolved = false;
     }
 
     const questions = await prisma.question.findMany({
