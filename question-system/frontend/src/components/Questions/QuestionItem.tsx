@@ -17,7 +17,7 @@ export function QuestionItem({ question, onUpdate, isTeacher }: QuestionItemProp
   const { user } = useAuth();
   const { themeObject } = useTheme();
   const isMobile = useMediaQuery('(max-width: 768px)');
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(true);
   const [isEditingTags, setIsEditingTags] = useState(false);
   const [editingTags, setEditingTags] = useState<Tag[]>([]);
   const [savingTags, setSavingTags] = useState(false);
