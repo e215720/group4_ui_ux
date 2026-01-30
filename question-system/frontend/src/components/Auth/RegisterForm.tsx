@@ -13,6 +13,7 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [role, setRole] = useState<'STUDENT' | 'TEACHER'>('STUDENT');
+  const [nickname, setNickname] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { setAuth } = useAuth();
@@ -27,7 +28,13 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
     setLoading(true);
 
     try {
-      const { user, token } = await register(email, password, name, role);
+      const { user, token } = await register(
+        email,
+        password,
+        name,
+        role,
+        role === 'STUDENT' ? nickname : undefined
+      );
       setAuth(user, token);
     } catch (err) {
       setError(err instanceof Error ? err.message : '登録に失敗しました');
@@ -88,6 +95,19 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
             <option value="TEACHER">教師</option>
           </select>
         </div>
+        {role === 'STUDENT' && (
+          <div style={styles.field}>
+            <label style={styles.label}>ニックネーム（任意）</label>
+            <input
+              type="text"
+              value={nickname}
+              onChange={(e) => setNickname(e.target.value)}
+              placeholder="質問投稿時に表示できる名前"
+              style={styles.input}
+            />
+            <span style={styles.hint}>投稿時にニックネームを表示するか選択できます</span>
+          </div>
+        )}
         <button type="submit" disabled={loading} style={buttonStyle}>
           {loading ? '登録中...' : '登録'}
         </button>
@@ -171,5 +191,25 @@ const getStyles = (theme: Theme, isMobile: boolean): { [key: string]: React.CSSP
     cursor: 'pointer',
     textDecoration: 'underline',
     fontSize: 'inherit',
+  },
+  checkboxField: {
+    display: 'flex',
+    alignItems: 'center',
+  },
+  checkboxLabel: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    color: theme.text,
+    cursor: 'pointer',
+  },
+  checkbox: {
+    width: '18px',
+    height: '18px',
+    cursor: 'pointer',
+  },
+  hint: {
+    fontSize: '13px',
+    color: theme.subtleText,
   },
 });

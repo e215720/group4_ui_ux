@@ -36,7 +36,7 @@ export async function getQuestions(req: AuthRequest, res: Response): Promise<voi
       where: Object.keys(whereClause).length > 0 ? whereClause : undefined,
       include: {
         author: {
-          select: { id: true, name: true, role: true },
+          select: { id: true, name: true, role: true, nickname: true, showNickname: true },
         },
         lecture: {
           select: { id: true, name: true },
@@ -50,7 +50,7 @@ export async function getQuestions(req: AuthRequest, res: Response): Promise<voi
         answers: {
           include: {
             author: {
-              select: { id: true, name: true, role: true },
+              select: { id: true, name: true, role: true, nickname: true, showNickname: true },
             },
             images: {
               select: { id: true, filename: true, path: true },
@@ -62,18 +62,34 @@ export async function getQuestions(req: AuthRequest, res: Response): Promise<voi
       orderBy: { createdAt: 'desc' },
     });
 
+    // Helper function to get display name for student users (for answers, use user's setting)
+    const getAnswerDisplayName = (author: { nickname: string | null; showNickname: boolean }) => {
+      if (author.showNickname && author.nickname) {
+        return author.nickname;
+      }
+      return '匿名';
+    };
+
+    // Helper function to get display name for question author (use question's showNickname setting)
+    const getQuestionDisplayName = (questionShowNickname: boolean, authorNickname: string | null) => {
+      if (questionShowNickname && authorNickname) {
+        return authorNickname;
+      }
+      return '匿名';
+    };
+
     // If user is a student, anonymize student author names (but show teacher names)
     const processedQuestions = questions.map((question) => ({
       ...question,
       author: userRole === 'TEACHER'
         ? question.author
-        : { id: question.author.id, name: '匿名', role: question.author.role },
+        : { id: question.author.id, name: getQuestionDisplayName(question.showNickname, question.author.nickname), role: question.author.role },
       answers: question.answers.map((answer) => ({
         ...answer,
-        // Teachers are always shown with their real name, students are anonymized
+        // Teachers are always shown with their real name, students are anonymized or show nickname
         author: userRole === 'TEACHER' || answer.author.role === 'TEACHER'
           ? answer.author
-          : { id: answer.author.id, name: '匿名', role: answer.author.role },
+          : { id: answer.author.id, name: getAnswerDisplayName(answer.author), role: answer.author.role },
       })),
     }));
 
@@ -94,7 +110,7 @@ export async function getQuestion(req: AuthRequest, res: Response): Promise<void
       where: { id: parseInt(id) },
       include: {
         author: {
-          select: { id: true, name: true, role: true },
+          select: { id: true, name: true, role: true, nickname: true, showNickname: true },
         },
         lecture: {
           select: { id: true, name: true },
@@ -108,7 +124,7 @@ export async function getQuestion(req: AuthRequest, res: Response): Promise<void
         answers: {
           include: {
             author: {
-              select: { id: true, name: true, role: true },
+              select: { id: true, name: true, role: true, nickname: true, showNickname: true },
             },
             images: {
               select: { id: true, filename: true, path: true },
@@ -124,18 +140,34 @@ export async function getQuestion(req: AuthRequest, res: Response): Promise<void
       return;
     }
 
+    // Helper function to get display name for student users (for answers, use user's setting)
+    const getAnswerDisplayName = (author: { nickname: string | null; showNickname: boolean }) => {
+      if (author.showNickname && author.nickname) {
+        return author.nickname;
+      }
+      return '匿名';
+    };
+
+    // Helper function to get display name for question author (use question's showNickname setting)
+    const getQuestionDisplayName = (questionShowNickname: boolean, authorNickname: string | null) => {
+      if (questionShowNickname && authorNickname) {
+        return authorNickname;
+      }
+      return '匿名';
+    };
+
     // If user is a student, anonymize student author names (but show teacher names)
     const processedQuestion = {
       ...question,
       author: userRole === 'TEACHER'
         ? question.author
-        : { id: question.author.id, name: '匿名', role: question.author.role },
+        : { id: question.author.id, name: getQuestionDisplayName(question.showNickname, question.author.nickname), role: question.author.role },
       answers: question.answers.map((answer) => ({
         ...answer,
-        // Teachers are always shown with their real name, students are anonymized
+        // Teachers are always shown with their real name, students are anonymized or show nickname
         author: userRole === 'TEACHER' || answer.author.role === 'TEACHER'
           ? answer.author
-          : { id: answer.author.id, name: '匿名', role: answer.author.role },
+          : { id: answer.author.id, name: getAnswerDisplayName(answer.author), role: answer.author.role },
       })),
     };
 
@@ -148,7 +180,7 @@ export async function getQuestion(req: AuthRequest, res: Response): Promise<void
 
 export async function createQuestion(req: AuthRequest, res: Response): Promise<void> {
   const prisma: PrismaClient = req.app.get('prisma');
-  const { title, content, lectureId, tagIds, images } = req.body;
+  const { title, content, lectureId, tagIds, images, showNickname } = req.body;
   const userId = req.user?.id;
 
   if (!userId) {
@@ -182,6 +214,7 @@ export async function createQuestion(req: AuthRequest, res: Response): Promise<v
         content,
         authorId: userId,
         lectureId,
+        showNickname: showNickname || false,
         ...(tagIds && tagIds.length > 0
           ? { tags: { connect: tagIds.map((id: number) => ({ id })) } }
           : {}),

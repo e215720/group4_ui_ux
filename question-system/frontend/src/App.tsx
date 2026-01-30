@@ -2,16 +2,17 @@ import { useState, useMemo, useEffect } from 'react';
 import { useAuth } from './hooks/useAuth';
 import { LoginForm } from './components/Auth/LoginForm';
 import { RegisterForm } from './components/Auth/RegisterForm';
+import { ProfileSettings } from './components/Auth/ProfileSettings';
 import { QuestionList } from './components/Questions/QuestionList';
 import { LectureList } from './components/Lectures/LectureList';
 import { LectureForm } from './components/Lectures/LectureForm';
 import { QuestionForm } from './components/Questions/QuestionForm';
-import { Lecture } from './services/api';
+import { Lecture, User } from './services/api';
 import { useTheme, Theme } from './contexts/ThemeContext';
 import { useMediaQuery } from './hooks/useMediaQuery';
 
 function App() {
-  const { user, logout, loading } = useAuth();
+  const { user, logout, loading, setAuth } = useAuth();
   const { theme, themeObject, toggleTheme } = useTheme();
   const [showLogin, setShowLogin] = useState(true);
   const [selectedLecture, setSelectedLecture] = useState<Lecture | null>(null);
@@ -19,6 +20,7 @@ function App() {
   const [isLeftbarOpen, setIsLeftbarOpen] = useState(true);
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [isCloseButtonHovered, setIsCloseButtonHovered] = useState(false);
+  const [showProfileSettings, setShowProfileSettings] = useState(false);
 
   const isMobile = useMediaQuery('(max-width: 768px)');
 
@@ -37,8 +39,17 @@ function App() {
     setSelectedLecture(null);
     setIsLeftbarOpen(true);
     setIsFormVisible(false);
+    setShowProfileSettings(false);
     setRefreshKey(0);
     setShowLogin(true);
+  };
+
+  const handleProfileUpdate = (updatedUser: User) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      setAuth(updatedUser, token);
+    }
+    setRefreshKey((prev) => prev + 1);
   };
 
   const handleEntityCreated = () => {
@@ -115,6 +126,11 @@ function App() {
            <button onClick={toggleTheme} style={styles.themeToggleButton}>
             {theme === 'light' ? <MoonIcon /> : <SunIcon />}
           </button>
+          {isStudent && (
+            <button onClick={() => setShowProfileSettings(true)} style={styles.settingsButton} title="プロフィール設定">
+              <SettingsIcon />
+            </button>
+          )}
           <span style={styles.userName}>
             {user.name} ({isTeacher ? '教師' : '学生'})
           </span>
@@ -212,9 +228,23 @@ function App() {
           )}
         </div>
       </div>
+      {showProfileSettings && user && (
+        <ProfileSettings
+          user={user}
+          onClose={() => setShowProfileSettings(false)}
+          onUpdate={handleProfileUpdate}
+        />
+      )}
     </div>
   );
 }
+
+const SettingsIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="3"></circle>
+    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+  </svg>
+);
 
 const SunIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -317,6 +347,17 @@ const getStyles = (theme: Theme, isMobile: boolean): { [key: string]: React.CSSP
     fontWeight: 'bold',
   },
   themeToggleButton: {
+    background: 'none',
+    border: 'none',
+    color: theme.headerColor,
+    cursor: 'pointer',
+    padding: '0',
+    margin: '0',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  settingsButton: {
     background: 'none',
     border: 'none',
     color: theme.headerColor,
