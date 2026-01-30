@@ -21,6 +21,7 @@ export function QuestionList({ lecture, isTeacher }: QuestionListProps) {
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
   const isMountedRef = useRef(true);
 
   const styles = useMemo(() => getStyles(themeObject, isMobile), [themeObject, isMobile]);
@@ -82,9 +83,28 @@ export function QuestionList({ lecture, isTeacher }: QuestionListProps) {
     setSelectedTagIds(tagIds);
   };
 
+  const handleTagClick = (tagId: number) => {
+    setSelectedTagIds((prev) => {
+      if (prev.length === 1 && prev[0] === tagId) {
+        return [];
+      }
+      return [tagId];
+    });
+  };
+
   const formatLastUpdated = (date: Date) => {
     return date.toLocaleTimeString('ja-JP');
   };
+
+  const sortedQuestions = useMemo(() => {
+    const copy = [...questions];
+    copy.sort((a, b) => {
+      const aTime = new Date(a.createdAt).getTime();
+      const bTime = new Date(b.createdAt).getTime();
+      return sortOrder === 'newest' ? bTime - aTime : aTime - bTime;
+    });
+    return copy;
+  }, [questions, sortOrder]);
   
   if (!lecture) {
     return (
@@ -113,6 +133,17 @@ export function QuestionList({ lecture, isTeacher }: QuestionListProps) {
       <div style={styles.listHeader}>
         <h3 style={styles.title}>質問一覧</h3>
         <div style={styles.refreshControls}>
+          <label style={styles.sortLabel}>
+            並び順
+            <select
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value as 'newest' | 'oldest')}
+              style={styles.sortSelect}
+            >
+              <option value="newest">新しい順</option>
+              <option value="oldest">古い順</option>
+            </select>
+          </label>
           <label style={styles.autoRefreshLabel}>
             <input
               type="checkbox"
@@ -146,12 +177,13 @@ export function QuestionList({ lecture, isTeacher }: QuestionListProps) {
         </div>
       ) : (
         <div style={styles.list}>
-          {questions.map((question) => (
+          {sortedQuestions.map((question) => (
             <QuestionItem
               key={question.id}
               question={question}
               onUpdate={() => fetchQuestions(false)}
               isTeacher={isTeacher}
+              onTagClick={(tag) => handleTagClick(tag.id)}
             />
           ))}
         </div>
@@ -194,6 +226,20 @@ const getStyles = (theme: Theme, isMobile: boolean): { [key: string]: React.CSSP
     alignItems: 'center',
     gap: '15px',
     fontSize: '14px',
+  },
+  sortLabel: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    color: theme.subtleText,
+  },
+  sortSelect: {
+    padding: '4px 8px',
+    borderRadius: '4px',
+    border: `1px solid ${theme.border}`,
+    backgroundColor: theme.formBg,
+    color: theme.text,
+    fontSize: '13px',
   },
   autoRefreshLabel: {
     display: 'flex',
