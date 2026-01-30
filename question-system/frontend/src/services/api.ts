@@ -13,11 +13,18 @@ interface Author {
   role: 'TEACHER' | 'STUDENT';
 }
 
+interface AnswerImage {
+  id: number;
+  filename: string;
+  path: string;
+}
+
 interface Answer {
   id: number;
   content: string;
   author: Author;
   questionId: number;
+  images?: AnswerImage[];
   createdAt: string;
 }
 
@@ -264,14 +271,15 @@ export async function deleteQuestion(id: number): Promise<{ message: string }> {
 
 export async function addAnswer(
   questionId: number,
-  content: string
+  content: string,
+  images?: { filename: string; path: string }[]
 ): Promise<{ answer: Answer }> {
   const response = await fetch(`${API_BASE}/questions/${questionId}/answers`, {
     method: 'POST',
     headers: getAuthHeaders(),
-    body: JSON.stringify({ content }),
+    body: JSON.stringify({ content, images }),
   });
   return handleResponse<{ answer: Answer }>(response);
 }
 
-export type { User, Question, Answer, Author, Lecture, Tag, QuestionImage };
+export type { User, Question, Answer, Author, Lecture, Tag, QuestionImage, AnswerImage };

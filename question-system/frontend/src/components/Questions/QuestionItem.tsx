@@ -237,6 +237,23 @@ export function QuestionItem({ question, onUpdate, isTeacher }: QuestionItemProp
                   <span style={styles.answerDate}>{formatDate(answer.createdAt)}</span>
                 </div>
                 <p style={styles.answerContent}>{answer.content}</p>
+                {answer.images && answer.images.length > 0 && (
+                  <div style={styles.answerImagesSection}>
+                    {answer.images.map((image) => (
+                      <div
+                        key={image.id}
+                        style={styles.imageLink}
+                        onClick={() => handleImageClick(image.path)}
+                      >
+                        <img
+                          src={image.path}
+                          alt={`Answer image ${image.id}`}
+                          style={styles.answerImage}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             ))
           )}
@@ -459,5 +476,19 @@ const getStyles = (theme: Theme, isMobile: boolean): { [key: string]: React.CSSP
     lineHeight: 1.5,
     color: theme.text,
     wordBreak: 'break-word',
+  },
+  answerImagesSection: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '8px',
+    marginTop: '10px',
+  },
+  answerImage: {
+    maxWidth: '200px',
+    maxHeight: '150px',
+    objectFit: 'contain',
+    borderRadius: '6px',
+    border: `1px solid ${theme.border}`,
+    cursor: 'pointer',
   },
 });

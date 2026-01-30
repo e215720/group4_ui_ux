@@ -52,6 +52,9 @@ export async function getQuestions(req: AuthRequest, res: Response): Promise<voi
             author: {
               select: { id: true, name: true, role: true },
             },
+            images: {
+              select: { id: true, filename: true, path: true },
+            },
           },
           orderBy: { createdAt: 'asc' },
         },
@@ -106,6 +109,9 @@ export async function getQuestion(req: AuthRequest, res: Response): Promise<void
           include: {
             author: {
               select: { id: true, name: true, role: true },
+            },
+            images: {
+              select: { id: true, filename: true, path: true },
             },
           },
           orderBy: { createdAt: 'asc' },
@@ -250,7 +256,7 @@ export async function unresolveQuestion(req: AuthRequest, res: Response): Promis
 export async function addAnswer(req: AuthRequest, res: Response): Promise<void> {
   const prisma: PrismaClient = req.app.get('prisma');
   const { id } = req.params;
-  const { content } = req.body;
+  const { content, images } = req.body;
   const userId = req.user?.id;
 
   if (!userId) {
@@ -278,10 +284,23 @@ export async function addAnswer(req: AuthRequest, res: Response): Promise<void> 
         content,
         authorId: userId,
         questionId: parseInt(id),
+        ...(images && images.length > 0
+          ? {
+              images: {
+                create: images.map((img: { filename: string; path: string }) => ({
+                  filename: img.filename,
+                  path: img.path,
+                })),
+              },
+            }
+          : {}),
       },
       include: {
         author: {
           select: { id: true, name: true, role: true },
+        },
+        images: {
+          select: { id: true, filename: true, path: true },
         },
       },
     });

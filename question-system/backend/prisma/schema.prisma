@@ -55,13 +55,23 @@ model QuestionImage {
 }
 
 model Answer {
-  id         Int      @id @default(autoincrement())
+  id         Int           @id @default(autoincrement())
   content    String
-  author     User     @relation(fields: [authorId], references: [id])
+  author     User          @relation(fields: [authorId], references: [id])
   authorId   Int
-  question   Question @relation(fields: [questionId], references: [id])
+  question   Question      @relation(fields: [questionId], references: [id])
   questionId Int
-  createdAt  DateTime @default(now())
+  images     AnswerImage[]
+  createdAt  DateTime      @default(now())
+}
+
+model AnswerImage {
+  id        Int      @id @default(autoincrement())
+  filename  String
+  path      String
+  answer    Answer   @relation(fields: [answerId], references: [id], onDelete: Cascade)
+  answerId  Int
+  createdAt DateTime @default(now())
 }
 
 model Tag {
